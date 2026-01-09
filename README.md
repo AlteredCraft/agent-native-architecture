@@ -1,4 +1,4 @@
-# AI-First Todo
+# Agent-Native Todo
 
 An experiment in building software where the LLM is the core, not an add-on.
 
@@ -14,7 +14,7 @@ We're using a todo/personal assistant as a familiar example to explore what this
 
 ```bash
 # Clone and enter
-cd ai-first-todo
+cd agent-native-todo
 
 # Install dependencies
 uv sync
@@ -112,7 +112,17 @@ We're testing whether a vector database can serve as the *single* persistence la
 ## Project Structure
 
 ```
-ai_first_app/
+agent_native_app/
+├── config.py         # Configuration from .env
+├── logging_config.py # Central logging setup
+├── store.py          # Store protocol + ChromaStore
+├── tools.py          # 7 primitives + OpenAI-compatible schemas
+├── agent.py          # OpenRouter agent with tool calling
+├── cli.py            # Interactive REPL
+└── prompts/
+    └── system.md     # "How to think" prompt
+```
+agent_native_app/
 ├── config.py         # Configuration from .env
 ├── logging_config.py # Central logging setup
 ├── store.py          # Store protocol + ChromaStore
@@ -162,7 +172,7 @@ Collections: 2
 
 📁 Collection: memory
 ----------------------------------------
-  Browse: chroma browse memory --path /Users/sam/Projects/ai-first-todo/.data
+  Browse: chroma browse memory --path /Users/sam/Projects/agent-native-todo/.data
   Config: {'hnsw:space': 'cosine'}
   Items: 1
   Metadata fields:
@@ -175,7 +185,7 @@ Collections: 2
 
 📁 Collection: items
 ----------------------------------------
-  Browse: chroma browse items --path /Users/sam/Projects/ai-first-todo/.data
+  Browse: chroma browse items --path /Users/sam/Projects/agent-native-todo/.data
   Config: {'hnsw:space': 'cosine'}
   Items: 6
   Metadata fields:
@@ -222,7 +232,7 @@ The agent uses the **OpenAI function calling format** to communicate tools to th
 
 ### Tool Schema Definition
 
-Each tool is defined as a JSON schema in `ai_first_app/tools.py`:
+Each tool is defined as a JSON schema in `agent_native_app/tools.py`:
 
 ```python
 TOOL_SCHEMAS = [
@@ -257,7 +267,7 @@ TOOLS = {
 
 ### Passing Tools to the LLM
 
-In `ai_first_app/agent.py`, tools are sent on every API call:
+In `agent_native_app/agent.py`, tools are sent on every API call:
 
 ```python
 response = self._client.chat.completions.create(

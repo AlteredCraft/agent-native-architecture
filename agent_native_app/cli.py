@@ -1,5 +1,5 @@
 """
-Command-line interface for the AI-First Todo assistant.
+Command-line interface for the Agent-Native Todo assistant.
 """
 
 from .agent import Agent
@@ -8,7 +8,7 @@ from .config import Config
 
 def main(config: Config):
     """Run the interactive CLI."""
-    print("AI-First Todo Assistant")
+    print("Agent-Native Todo Assistant")
     print("=" * 40)
     print("Type your message and press Enter.")
     print("Commands: /quit, /reset, /help")

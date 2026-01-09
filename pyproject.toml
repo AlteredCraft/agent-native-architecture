@@ -1,5 +1,5 @@
 [project]
-name = "ai-first-app"
+name = "agent-native-app"
 version = "0.1.0"
 description = "An experiment in building software where the LLM is the core, not an add-on"
 readme = "README.md"

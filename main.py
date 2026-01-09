@@ -1,13 +1,13 @@
-"""Entry point for the AI-First Todo assistant."""
+"""Entry point for the Agent-Native Todo assistant."""
 
 import logging
 import sys
 
-from ai_first_app.config import ConfigError, load_config
-from ai_first_app.logging_config import setup_logging
-from ai_first_app.cli import main
+from agent_native_app.config import ConfigError, load_config
+from agent_native_app.logging_config import setup_logging
+from agent_native_app.cli import main
 
-logger = logging.getLogger("ai_first_app")
+logger = logging.getLogger("agent_native_app")
 
 if __name__ == "__main__":
     try:
@@ -25,7 +25,11 @@ if __name__ == "__main__":
 
     # Log startup context
     logger.info(f"Model: {config.openrouter_model}")
-    logger.info(f"Log levels: app={logging.getLevelName(config.log_level_app)}, deps={logging.getLevelName(config.log_level_deps)}")
-    logger.info(f"Log output: console={config.log_to_console}, file={config.log_file_path or 'disabled'}")
+    logger.info(
+        f"Log levels: app={logging.getLevelName(config.log_level_app)}, deps={logging.getLevelName(config.log_level_deps)}"
+    )
+    logger.info(
+        f"Log output: console={config.log_to_console}, file={config.log_file_path or 'disabled'}"
+    )
 
     main(config)

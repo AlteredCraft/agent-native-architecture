@@ -16,7 +16,7 @@ Philosophy tested by experiment. We examined three layers:
 We're building a companion app to validate assumptions and discover the edges.
 
 ## Goals
-- Help developers and product thinkers understand the AI-first paradigm shift
+- Help developers and product thinkers understand the agent-native paradigm shift
 - Provide clear mental models (schema-first → semantic-first, features → capabilities)
 - Honestly acknowledge the tensions (trust, transparency, predictability tradeoffs)
 - Invite others building in this space to share what they're discovering
@@ -26,7 +26,7 @@ Layered: accessible to curious generalists, rewarding for technical readers.
 
 ## Notes
 - Think of it in the sense of a harness — classical apps are harness-bound;
-  AI-first apps still have a harness, but we loosen it up
+  agent-native apps still have a harness, but we loosen it up
 
 ### Key framing: Structured data as OUTPUT not INPUT
 Classical apps require users to translate their messy human intentions into
@@ -35,7 +35,7 @@ a project from the dropdown, pick a due date from the calendar widget, choose
 tags from the list. The database schema dictates what you *can* express — if
 there's no "energy level" field, the app doesn't understand energy levels.
 
-AI-first apps invert this. You express intent naturally: "remind me to call
+agent-native apps invert this. You express intent naturally: "remind me to call
 Mom before my flight tomorrow." The system interprets this into structured
 data — a task object, linked to a calendar event, with a time-based trigger.
 The structure emerges from understanding, not from user effort.
@@ -44,14 +44,14 @@ This is the fundamental inversion: users no longer work for the schema. The
 schema works for them.
 
 ### The app doesn't disappear; it moves from foreground to background
-Some interpret "AI-first" as "chat replaces everything." But structured UI
+Some interpret "agent-native" as "chat replaces everything." But structured UI
 still has value — glanceable task lists, visual calendars, quick-capture
 buttons. The question isn't "chat OR interface" — it's "who's in control?"
 
 In classical apps, the UI is the control layer. You navigate menus, click
 buttons, fill forms. The app is the thing you operate.
 
-In AI-first apps, the assistant becomes the primary control layer for complex
+In agent-native apps, the assistant becomes the primary control layer for complex
 or ambiguous tasks. The structured UI becomes a rendering layer — a way to
 *see* your information and perform quick actions, but not the only (or primary)
 way to *act* on it.
@@ -69,9 +69,9 @@ The problem isn't the apps. It's the paradigm. These tools ask you to adapt to *
 
 What if the app adapted to you? Not just preferences and themes — but fundamentally shaped itself around how *you* think, what *you* need, in the moment you need it?
 
-This is the promise of AI-first software. And it requires rethinking everything: architecture, interface, and what an "app" even is.
+This is the promise of agent-native software. And it requires rethinking everything: architecture, interface, and what an "app" even is.
 
-I understand through building. This post shares what I've discovered creating an AI-first personal assistant — philosophy tested by experiment.
+I understand through building. This post shares what I've discovered creating an agent-native personal assistant — philosophy tested by experiment.
 
 ---
 
@@ -81,7 +81,7 @@ Classical apps are built around a data schema. A task has a title, a due date, a
 
 This isn't a flaw — it's how we had to build software. Machines needed rigid inputs to produce reliable outputs.
 
-AI-first apps flip this. The core isn't a schema — it's a model that understands language, context, and intent. You say "remind me to call Mom before my flight tomorrow." The system *interprets* that into structured data: a task, linked to a calendar event, with a time-based trigger.
+agent-native apps flip this. The core isn't a schema — it's a model that understands language, context, and intent. You say "remind me to call Mom before my flight tomorrow." The system *interprets* that into structured data: a task, linked to a calendar event, with a time-based trigger.
 
 Structured data becomes an **output** of understanding, not an **input** required from the user.
 
@@ -99,7 +99,7 @@ This shift changes everything downstream:
 
 With traditional software, there's an onboarding curve. You learn where things are, what the icons mean, which gestures work. You adapt your mental model to the app's structure. Power users are those who've mastered the app's logic.
 
-AI-first apps reverse the burden. Instead of you learning the app, the app learns you. It observes that you batch similar tasks together. It notices you always reschedule morning tasks when you have evening events. It understands that "urgent" means something different on weekdays than weekends.
+agent-native apps reverse the burden. Instead of you learning the app, the app learns you. It observes that you batch similar tasks together. It notices you always reschedule morning tasks when you have evening events. It understands that "urgent" means something different on weekdays than weekends.
 
 This doesn't mean conversation replaces UI entirely. Some things are faster as buttons and lists — a glanceable daily view beats the assistant reading your tasks aloud. The shift is that you flow between modes: structured interface for quick actions and visual overview, conversation for complex planning and ambiguous requests.
 
@@ -115,11 +115,11 @@ This relationship deepens over time. Early on, more confirmation: "I'm about to 
 
 Traditional apps are bounded by their feature set. If the developers didn't build a burndown chart, you don't get one. If the app doesn't integrate with your calendar, you manually cross-reference. Each app is an island, and you're the bridge between them.
 
-An AI-first assistant can connect information you'd never manually link. It sees your flight is at 6am tomorrow, notices you have a task to call Mom, and asks: "Should I move that call to today?" It doesn't just store your data in silos — it *reasons* across them.
+An agent-native assistant can connect information you'd never manually link. It sees your flight is at 6am tomorrow, notices you have a task to call Mom, and asks: "Should I move that call to today?" It doesn't just store your data in silos — it *reasons* across them.
 
 This isn't just convenient. It's categorically different. The assistant understands *relationships* between things, not just the things themselves.
 
-Classical apps wait for commands. You open them, you act, you close them. AI-first assistants can initiate. They notice patterns, anticipate needs, surface things before you ask.
+Classical apps wait for commands. You open them, you act, you close them. agent-native assistants can initiate. They notice patterns, anticipate needs, surface things before you ask.
 
 "You've rescheduled this task three times. Want to break it into smaller pieces or delegate it?"
 
@@ -133,13 +133,13 @@ Eventually, features don't need to be pre-built at all. "Show me a visualization
 
 ## Agency Requires Trust, Trust Requires Transparency
 
-More capability means less predictability. This is the fundamental tradeoff of AI-first software, and pretending otherwise does no one any favors.
+More capability means less predictability. This is the fundamental tradeoff of agent-native software, and pretending otherwise does no one any favors.
 
 Proactive assistance requires observation. For the assistant to notice you always reschedule Monday morning tasks, it has to be watching. When does "it understood my patterns" become "it's tracking me too closely"? The line is personal, contextual, and moves over time.
 
-What happens when the assistant acts and gets it *wrong*? It rescheduled a call you actually needed to keep. It archived something important. Classical apps rarely make autonomous mistakes — because they rarely act autonomously. AI-first apps will get things wrong. The question is: how do you recover trust? Too much confirmation is annoying. Too little is dangerous.
+What happens when the assistant acts and gets it *wrong*? It rescheduled a call you actually needed to keep. It archived something important. Classical apps rarely make autonomous mistakes — because they rarely act autonomously. agent-native apps will get things wrong. The question is: how do you recover trust? Too much confirmation is annoying. Too little is dangerous.
 
-You click a button in a classical app, you know what happened. An AI-first assistant might take five steps you didn't see. "I handled that for you" is both magical and unnerving. Transparency mechanisms matter — not to restrict the assistant, but to build confidence in it.
+You click a button in a classical app, you know what happened. An agent-native assistant might take five steps you didn't see. "I handled that for you" is both magical and unnerving. Transparency mechanisms matter — not to restrict the assistant, but to build confidence in it.
 
 These aren't reasons to avoid the paradigm. They're design challenges to navigate. The shift from deterministic to probabilistic software is real, and it demands new patterns for trust, transparency, and recovery.
 
@@ -151,7 +151,7 @@ These aren't reasons to avoid the paradigm. They're design challenges to navigat
 
 Theory only goes so far. To really understand a paradigm shift, you have to build something. That's always been my method — test assumptions with experiments, discover the edges through practice.
 
-This post isn't just philosophy. I'm building an AI-first personal assistant to explore how far these ideas actually go. Where does semantic-first shine? Where does it break down? When does proactive become annoying? When does trust form — or fail to?
+This post isn't just philosophy. I'm building an agent-native personal assistant to explore how far these ideas actually go. Where does semantic-first shine? Where does it break down? When does proactive become annoying? When does trust form — or fail to?
 
 I don't have all the answers. I have hypotheses and a willingness to test them.
 

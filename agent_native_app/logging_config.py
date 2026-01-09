@@ -53,5 +53,5 @@ def setup_logging(
     # Root logger controls dependency log level
     logging.getLogger().setLevel(dep_level)
 
-    # App logger - more verbose (covers all ai_first_app.* modules)
-    logging.getLogger("ai_first_app").setLevel(app_level)
+    # App logger - more verbose (covers all agent_native_app.* modules)
+    logging.getLogger("agent_native_app").setLevel(app_level)

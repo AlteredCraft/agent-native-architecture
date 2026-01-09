@@ -1,9 +1,9 @@
-# AI-First Todo: Implementation Plan
+# Agent-Native Todo: Implementation Plan
 
 ## Premise
 
 ### What We're Exploring
-This is an experiment in **AI-first application design** — building a personal assistant
+This is an experiment in **agent-native application design** — building a personal assistant
 where the LLM is the core, not an add-on. We're testing whether the classical approach
 to app development (schema-first, deterministic, feature-bound) can be inverted.
 
