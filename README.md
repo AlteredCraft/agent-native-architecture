@@ -1,4 +1,4 @@
-# Agent-Native Todo
+# Agent Native Architectures
 
 An experiment in building software where the LLM is the core, not an add-on.
 
@@ -61,25 +61,25 @@ Higher-level concepts (projects, priorities, contexts) emerge from reasoning, no
 
 ```
 ┌─────────────────────────────────────────┐
-│                  CLI                     │
+│                  CLI                    │
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐
-│              LLM Agent                   │
-│        (OpenRouter, any model)           │
+│              LLM Agent                  │
+│        (OpenRouter, any model)          │
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐
-│           7 Primitive Tools              │
+│           7 Primitive Tools             │
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐
-│          Store (Protocol)                │
+│          Store (Protocol)               │
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐
-│             ChromaDB                     │
-│     (items + memory, semantic search)    │
+│             ChromaDB                    │
+│     (items + memory, semantic search)   │
 └─────────────────────────────────────────┘
 ```
 
