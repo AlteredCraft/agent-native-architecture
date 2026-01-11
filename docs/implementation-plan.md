@@ -19,7 +19,7 @@ these ideas concretely.
   required from the user.
 - **Primitives over prescriptions**: Tools are low-level building blocks. Higher-level
   concepts (projects, priorities, contexts) emerge from the assistant's reasoning and
-  system prompt guidance — not baked into the tool layer.
+  system prompt guidance, not baked into the tool layer.
 - **Philosophy tested by experiment**: We validate assumptions by building, not just
   theorizing.
 
@@ -80,6 +80,8 @@ Start with minimal primitives. Let the assistant's reasoning build higher-level 
 | `recall_memory` | `(query: str) -> List[Memory]` | Semantic retrieval of relevant memories |
 
 ## Architecture (Phase 1)
+
+> See [Architecture Diagrams](diagrams.md) for detailed Mermaid visualizations.
 
 ```
 ┌─────────────────────────────────────────┐

@@ -55,8 +55,6 @@ The assistant has 7 primitive tools and builds everything else through reasoning
 | `store_memory` | Remember preferences and patterns |
 | `recall_memory` | Retrieve relevant memories |
 
-Higher-level concepts (projects, priorities, contexts) emerge from reasoning, not from baking them into the tool layer.
-
 ## Architecture
 
 ```
@@ -121,22 +119,13 @@ agent_native_app/
 ├── cli.py            # Interactive REPL
 └── prompts/
     └── system.md     # "How to think" prompt
-```
-agent_native_app/
-├── config.py         # Configuration from .env
-├── logging_config.py # Central logging setup
-├── store.py          # Store protocol + ChromaStore
-├── tools.py          # 7 primitives + OpenAI-compatible schemas
-├── agent.py          # OpenRouter agent with tool calling
-├── cli.py            # Interactive REPL
-└── prompts/
-    └── system.md     # "How to think" prompt
 
 scripts/
 └── db_describe.py    # Inspect ChromaDB collections
 
 docs/
 ├── blog-post-the-app-is-dead.md   # Philosophy essay
+├── diagrams.md                     # Architecture diagrams
 ├── implementation-plan.md          # Technical design
 └── research-notes.md               # Background research
 ```
@@ -222,6 +211,7 @@ The system prompt teaches the assistant *how to think*, not *what to do*:
 
 - [The App is Dead, Long Live the Assistant](docs/blog-post-the-app-is-dead.md) — Philosophy essay
 - [Implementation Plan](docs/implementation-plan.md) — Technical design
+- [Architecture Diagrams](docs/diagrams.md) — Visual overview of ChromaDB and tool flow
 - [Research Notes](docs/research-notes.md) — Background research and citations
 
 ---
