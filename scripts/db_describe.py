@@ -38,6 +38,7 @@ def describe_db(persist_dir: str = ".data", show_samples: int = 0):
 
     print(f"Database: {persist_dir}")
     print(f"Collections: {len(collections)}")
+    print("For Browse cmd, see: https://docs.trychroma.com/docs/cli/browse")
     print("=" * 60)
 
     for collection in collections:
