@@ -1,10 +1,12 @@
 # Agent-Native Todo: Implementation Plan
 
+> See [Agent Native Architecture](article.md) for the canonical definition of ANA.
+
 ## Premise
 
 ### What We're Exploring
-This is an experiment in **agent-native application design** — building a personal assistant
-where the LLM is the core, not an add-on. We're testing whether the classical approach
+This is an experiment in **Agent Native Architecture (ANA)** — building a personal assistant
+where the LLM is the reasoning core, not an add-on. We're testing whether the classical approach
 to app development (schema-first, deterministic, feature-bound) can be inverted.
 
 **The classical approach**: Define data models → Build features → Add AI as enhancement
@@ -22,6 +24,14 @@ these ideas concretely.
   system prompt guidance, not baked into the tool layer.
 - **Philosophy tested by experiment**: We validate assumptions by building, not just
   theorizing.
+
+### Schema Hint Level
+This implementation sits at **medium-hint** on the schema hint spectrum (see article.md §4):
+
+- **Low-hint tools**: Generic CRUD (`create_item`, `update_item`, etc.) without domain-specific constraints. The agent decides what properties matter.
+- **Medium-hint system prompt**: Domain guidance (what tasks/priorities/projects mean) without rigid rules. The prompt teaches conventions, not schemas.
+
+This balance provides determinism at the operation level (auditable CRUD) while preserving flexibility at the domain level (agent decides structure).
 
 ### The ChromaDB-Only Experiment
 
@@ -78,6 +88,51 @@ Start with minimal primitives. Let the assistant's reasoning build higher-level 
 |------|-----------|---------|
 | `store_memory` | `(key: str, value: any) -> bool` | Persist user preferences, patterns, learnings |
 | `recall_memory` | `(query: str) -> List[Memory]` | Semantic retrieval of relevant memories |
+
+#### What to Store
+
+The article identifies three memory types:
+1. **Factual**: Explicit information (deadlines, task definitions)
+2. **Pattern**: Learned behaviors (when user works, what they prioritize)
+3. **Domain understanding**: Agent's model of problem space (concepts, relationships, conventions)
+
+The third is often overlooked. Without it, the agent rediscovers structure each session. The system prompt should encourage storing learnings like:
+- "This user organizes work by client, not project"
+- "High priority here means 'do today', not 'important'"
+- "Tasks with 'review' in the name typically need 30-60 minutes"
+
+#### CRUD Considerations
+
+Current implementation: `store_memory` + `recall_memory` (Create + Read only).
+
+**Update**: Practically necessary. User preferences change; agent understanding evolves. Without update, contradictory memories accumulate. Options:
+- Explicit `update_memory` tool
+- `store_memory` accepts optional ID to overwrite
+
+**Delete**: More debatable. Options:
+1. Soft delete (mark inactive, exclude from retrieval)
+2. Automatic decay (older memories weighted less)
+3. Explicit delete only for agent-initiated corrections
+
+Current approach: append-only. Revisit if retrieval quality degrades.
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| Append-only + recency | Simple, no data loss | Accumulates contradictions |
+| Explicit CRUD | Full control | Agent might delete valuable context |
+| Soft delete + decay | Safe, recoverable | More complex retrieval logic |
+
+#### Key Design
+
+Current: semantic-only retrieval (no explicit keys). Alternatives:
+
+| Approach | When to Use |
+|----------|-------------|
+| Semantic only | When relevance matters more than precision |
+| Key + semantic | When some memories need exact lookup (e.g., `user_timezone`) |
+| Hierarchical keys | When organizing by domain (e.g., `preferences.scheduling.morning`) |
+
+Semantic-only aligns with ANA philosophy (agent reasons about relevance), but hybrid approaches may be more practical for frequently-accessed facts.
 
 ## Architecture (Phase 1)
 
@@ -178,3 +233,11 @@ The system prompt teaches the assistant *how to think*, not *what to do*:
 - Use memory to learn user patterns over time
 - Explain reasoning when making recommendations
 - Ask clarifying questions rather than assume
+
+## Future Considerations
+
+- **Memory compression**: Summarize/consolidate related memories over time
+- **Confidence scores**: Track how certain the agent is about stored inferences
+- **Source attribution**: Link memories to the interactions that produced them
+- **Cross-session learning**: Aggregate patterns across users (with privacy considerations)
+- **Memory update/delete**: If append-only causes retrieval issues, add explicit CRUD

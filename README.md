@@ -124,10 +124,11 @@ scripts/
 └── db_describe.py    # Inspect ChromaDB collections
 
 docs/
-├── blog-post-the-app-is-dead.md   # Philosophy essay
-├── diagrams.md                     # Architecture diagrams
+├── article.md                      # Canonical ANA definition
+├── editor-notes.md                 # Editorial rationale
 ├── implementation-plan.md          # Technical design
-└── research-notes.md               # Background research
+├── blog-post-the-app-is-dead.md    # Philosophy essay
+└── diagrams.md                     # Architecture diagrams
 ```
 
 ## Configuration
@@ -209,10 +210,10 @@ The system prompt teaches the assistant *how to think*, not *what to do*:
 
 ## Related
 
+- [Agent Native Architecture](docs/article.md) — Canonical definition of ANA
 - [The App is Dead, Long Live the Assistant](docs/blog-post-the-app-is-dead.md) — Philosophy essay
-- [Implementation Plan](docs/implementation-plan.md) — Technical design
+- [Implementation Plan](docs/implementation-plan.md) — Technical design and practical considerations
 - [Architecture Diagrams](docs/diagrams.md) — Visual overview of ChromaDB and tool flow
-- [Research Notes](docs/research-notes.md) — Background research and citations
 
 ---
 
