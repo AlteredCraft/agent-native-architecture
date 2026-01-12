@@ -8,7 +8,6 @@ baking them into tools.
 
 import functools
 import logging
-from datetime import datetime, timezone
 from typing import Any, Callable
 
 from .store import ChromaStore, Item
@@ -133,32 +132,6 @@ def query_items(
 
 
 # ============================================================================
-# Context
-# ============================================================================
-
-@log_tool_call
-def get_time() -> dict:
-    """
-    Get the current date and time.
-
-    Returns:
-        Current time information including ISO timestamp, readable format,
-        day of week, and timezone.
-    """
-    now = datetime.now(timezone.utc)
-    local = datetime.now()
-
-    return {
-        "iso": now.isoformat(),
-        "readable": local.strftime("%A, %B %d, %Y at %I:%M %p"),
-        "day_of_week": local.strftime("%A"),
-        "date": local.strftime("%Y-%m-%d"),
-        "time": local.strftime("%H:%M"),
-        "timezone": str(local.astimezone().tzinfo)
-    }
-
-
-# ============================================================================
 # Memory
 # ============================================================================
 
@@ -216,7 +189,6 @@ TOOLS = {
     "update_item": update_item,
     "delete_item": delete_item,
     "query_items": query_items,
-    "get_time": get_time,
     "store_memory": store_memory,
     "recall_memory": recall_memory,
 }
@@ -310,17 +282,6 @@ TOOL_SCHEMAS = [
                         "description": "Maximum number of results (default 10)"
                     }
                 }
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_time",
-            "description": "Get the current date and time. Use this when you need to know the current time for scheduling, due dates, or time-based reasoning.",
-            "parameters": {
-                "type": "object",
-                "properties": {}
             }
         }
     },

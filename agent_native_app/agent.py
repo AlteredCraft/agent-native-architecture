@@ -6,6 +6,7 @@ Handles conversation, tool calling, and response generation.
 
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -18,10 +19,12 @@ logger = logging.getLogger(__name__)
 
 
 def load_system_prompt() -> str:
-    """Load system prompt from file."""
+    """Load system prompt from file and inject current date/time."""
     prompt_path = Path(__file__).parent / "prompts" / "system.md"
     if prompt_path.exists():
-        return prompt_path.read_text()
+        prompt = prompt_path.read_text()
+        today = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
+        return prompt.replace("{{today}}", today)
     return "You are a helpful AI assistant for managing tasks and notes."
 
 
