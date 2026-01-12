@@ -14,7 +14,7 @@ We're using a todo/personal assistant as a familiar example to explore what this
 
 ```bash
 # Clone and enter
-cd agent-native-todo
+cd agent-native-app
 
 # Install dependencies
 uv sync
@@ -43,7 +43,7 @@ Assistant: Based on your preference for morning deep work,
           I'd suggest tackling the quarterly report review first...
 ```
 
-The assistant has 7 primitive tools and builds everything else through reasoning:
+The assistant has 6 primitive tools and builds everything else through reasoning:
 
 | Tool | Purpose |
 |------|---------|
@@ -51,7 +51,6 @@ The assistant has 7 primitive tools and builds everything else through reasoning
 | `update_item` | Modify content or properties |
 | `delete_item` | Remove |
 | `query_items` | Find by meaning or properties |
-| `get_time` | Temporal awareness |
 | `store_memory` | Remember preferences and patterns |
 | `recall_memory` | Retrieve relevant memories |
 
@@ -68,7 +67,7 @@ The assistant has 7 primitive tools and builds everything else through reasoning
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐
-│           7 Primitive Tools             │
+│           6 Primitive Tools             │
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐
@@ -114,7 +113,7 @@ agent_native_app/
 ├── config.py         # Configuration from .env
 ├── logging_config.py # Central logging setup
 ├── store.py          # Store protocol + ChromaStore
-├── tools.py          # 7 primitives + OpenAI-compatible schemas
+├── tools.py          # 6 primitives + OpenAI-compatible schemas
 ├── agent.py          # OpenRouter agent with tool calling
 ├── cli.py            # Interactive REPL
 └── prompts/
@@ -162,7 +161,7 @@ Collections: 2
 
 📁 Collection: memory
 ----------------------------------------
-  Browse: chroma browse memory --path /Users/sam/Projects/agent-native-todo/.data
+  Browse: chroma browse memory --path /Users/sam/Projects/agent-native-app/.data
   Config: {'hnsw:space': 'cosine'}
   Items: 1
   Metadata fields:
@@ -175,7 +174,7 @@ Collections: 2
 
 📁 Collection: items
 ----------------------------------------
-  Browse: chroma browse items --path /Users/sam/Projects/agent-native-todo/.data
+  Browse: chroma browse items --path /Users/sam/Projects/agent-native-app/.data
   Config: {'hnsw:space': 'cosine'}
   Items: 6
   Metadata fields:

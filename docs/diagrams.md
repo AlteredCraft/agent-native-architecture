@@ -15,7 +15,7 @@ flowchart TB
         SysPrompt["System Prompt<br/>'How to Think'"]
     end
 
-    subgraph Tools["7 Primitive Tools"]
+    subgraph Tools["6 Primitive Tools"]
         direction LR
         subgraph ItemOps["Item Operations"]
             create["create_item()"]
@@ -27,7 +27,6 @@ flowchart TB
             store_mem["store_memory()"]
             recall["recall_memory()"]
         end
-        time["get_time()"]
     end
 
     subgraph Protocol["Store Protocol"]

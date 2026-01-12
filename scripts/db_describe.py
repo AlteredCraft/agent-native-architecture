@@ -45,7 +45,7 @@ def describe_db(persist_dir: str = ".data", show_samples: int = 0):
         print("-" * 40)
 
         # CLI browse command
-        print(f"  Browse: chroma browse {collection.name} --path {abs_path}")
+        print(f"  Browse cmd: chroma browse {collection.name} --path {abs_path}")
 
         # Collection metadata
         if collection.metadata:
