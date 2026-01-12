@@ -38,24 +38,6 @@ class Config:
     log_file_path: str | None
 
 
-def _parse_log_level(value: str, default: int) -> int:
-    """Parse a log level string to its int value."""
-    value = value.strip().upper()
-    if not value:
-        return default
-    if value not in LOG_LEVELS:
-        return default
-    return LOG_LEVELS[value]
-
-
-def _parse_bool(value: str, default: bool) -> bool:
-    """Parse a boolean string (case insensitive)."""
-    value = value.strip().lower()
-    if not value:
-        return default
-    return value in ("true", "1", "yes", "on")
-
-
 def load_config() -> Config:
     """
     Load configuration from environment variables.
@@ -72,9 +54,18 @@ def load_config() -> Config:
 
     api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
     model = os.getenv("OPENROUTER_MODEL", "").strip()
-    log_level_app = _parse_log_level(os.getenv("LOG_LEVEL_APP", ""), logging.DEBUG)
-    log_level_deps = _parse_log_level(os.getenv("LOG_LEVEL_DEPS", ""), logging.INFO)
-    log_to_console = _parse_bool(os.getenv("LOG_TO_CONSOLE", ""), default=True)
+
+    # Parse log levels (default to DEBUG for app, INFO for deps)
+    log_level_app_str = os.getenv("LOG_LEVEL_APP", "").strip().upper()
+    log_level_app = LOG_LEVELS.get(log_level_app_str, logging.DEBUG)
+
+    log_level_deps_str = os.getenv("LOG_LEVEL_DEPS", "").strip().upper()
+    log_level_deps = LOG_LEVELS.get(log_level_deps_str, logging.INFO)
+
+    # Parse boolean (default to True)
+    log_to_console_str = os.getenv("LOG_TO_CONSOLE", "").strip().lower()
+    log_to_console = log_to_console_str in ("true", "1", "yes", "on") if log_to_console_str else True
+
     log_file_path = os.getenv("LOG_FILE_PATH", "").strip() or None
 
     errors = []

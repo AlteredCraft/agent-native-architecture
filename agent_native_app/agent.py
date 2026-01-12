@@ -48,6 +48,13 @@ class Agent:
         self._system_prompt = load_system_prompt()
         self._messages: list[dict] = []
 
+    def _build_messages(self) -> list[dict]:
+        """Build full message list with system prompt."""
+        return [
+            {"role": "system", "content": self._system_prompt},
+            *self._messages
+        ]
+
     def _execute_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         """Execute a tool and return the result."""
         if name not in TOOLS:
@@ -75,17 +82,11 @@ class Agent:
         # Add user message to history
         self._messages.append({"role": "user", "content": user_message})
 
-        # Build messages with system prompt
-        messages = [
-            {"role": "system", "content": self._system_prompt},
-            *self._messages
-        ]
-
         while True:
             # Call the LLM
             response = self._client.chat.completions.create(
                 model=self._model,
-                messages=messages,
+                messages=self._build_messages(),
                 tools=TOOL_SCHEMAS,
                 tool_choice="auto"
             )
@@ -136,12 +137,6 @@ class Agent:
                     "tool_call_id": tool_call.id,
                     "content": json.dumps(result)
                 })
-
-            # Update messages for next iteration
-            messages = [
-                {"role": "system", "content": self._system_prompt},
-                *self._messages
-            ]
 
     def reset(self) -> None:
         """Clear conversation history."""

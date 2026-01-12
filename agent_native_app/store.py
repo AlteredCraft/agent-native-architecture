@@ -13,6 +13,14 @@ from uuid import uuid4
 import chromadb
 from chromadb.config import Settings
 
+# Internal metadata keys excluded from user-facing metadata
+_INTERNAL_KEYS = {"created_at", "updated_at"}
+
+
+def _filter_metadata(metadata: dict) -> dict:
+    """Remove internal keys from metadata for user-facing output."""
+    return {k: v for k, v in metadata.items() if k not in _INTERNAL_KEYS}
+
 
 @dataclass
 class Item:
@@ -89,8 +97,7 @@ class ChromaStore:
         return Item(
             id=id,
             content=document,
-            metadata={k: v for k, v in metadata.items()
-                     if k not in ("created_at", "updated_at")},
+            metadata=_filter_metadata(metadata),
             created_at=metadata.get("created_at", ""),
             updated_at=metadata.get("updated_at", "")
         )
@@ -158,8 +165,7 @@ class ChromaStore:
         return Item(
             id=id,
             content=new_content,
-            metadata={k: v for k, v in new_metadata.items()
-                     if k not in ("created_at", "updated_at")},
+            metadata=_filter_metadata(new_metadata),
             created_at=existing.created_at,
             updated_at=new_metadata["updated_at"]
         )
@@ -189,45 +195,22 @@ class ChromaStore:
                 where=where,
                 include=["documents", "metadatas"]
             )
-
-            items = []
-            for i, item_id in enumerate(result["ids"][0]):
-                items.append(self._result_to_item(
-                    id=item_id,
-                    document=result["documents"][0][i],
-                    metadata=result["metadatas"][0][i]
-                ))
-            return items
-
-        elif where:
-            # Metadata-only filter
+            # Normalize nested structure from query()
+            ids = result["ids"][0]
+            documents = result["documents"][0]
+            metadatas = result["metadatas"][0]
+        else:
+            # Metadata filter or no filter — use get()
             result = self._collection.get(
                 where=where,
                 limit=limit,
                 include=["documents", "metadatas"]
             )
+            ids = result["ids"]
+            documents = result["documents"]
+            metadatas = result["metadatas"]
 
-            items = []
-            for i, item_id in enumerate(result["ids"]):
-                items.append(self._result_to_item(
-                    id=item_id,
-                    document=result["documents"][i],
-                    metadata=result["metadatas"][i]
-                ))
-            return items
-
-        else:
-            # No filter — return recent items
-            result = self._collection.get(
-                limit=limit,
-                include=["documents", "metadatas"]
-            )
-
-            items = []
-            for i, item_id in enumerate(result["ids"]):
-                items.append(self._result_to_item(
-                    id=item_id,
-                    document=result["documents"][i],
-                    metadata=result["metadatas"][i]
-                ))
-            return items
+        return [
+            self._result_to_item(id=ids[i], document=documents[i], metadata=metadatas[i])
+            for i in range(len(ids))
+        ]
