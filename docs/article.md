@@ -65,15 +65,16 @@ In practice, this manifests through flexible primitives. Rather than `create_tas
 
 ### 3.3 Memory Mechanism
 
-Agents require persistence across interactions to learn user patterns, maintain context, and improve over time. Within a single session, the LLM's context window may suffice. For agents operating across multiple sessions—where continuity matters but the context window resets—external memory becomes essential. This typically combines:
+Agents require persistence across interactions to learn user patterns, maintain context, and improve over time. Within a single session, the LLM's context window may suffice. For agents operating across multiple sessions—where continuity matters but the context window resets—external memory becomes essential.
 
-- **Factual memory**: Explicit information (deadlines, preferences, task definitions)
-- **Pattern memory**: Learned behaviors (when the user typically works, what types of tasks they prioritize)
-- **Domain understanding**: The agent's evolving model of the problem space—concepts, relationships, and conventions discovered through interaction
+ANA distinguishes two categories of persistent knowledge:
 
-This aligns with the distinction between Retrieval Augmented Generation (RAG) for grounding decisions in documented information and Memory Augmented Generation (MAG) for learning from behavioral patterns.
+- **Constitutive knowledge** (Global Context): Foundational understanding that should *always be present*—user preferences, behavioral patterns, constraints, and the agent's evolving model of the problem space. This knowledge shapes how the agent reasons and should not depend on retrieval. Global Context is analogous to the system prompt: both are always-present knowledge that shapes reasoning. The distinction is authorship—the system prompt is developer-controlled (defining agent persona and behavior), while Global Context is agent-controlled (adapting to a specific user over time).
+- **Episodic knowledge** (Items): Discrete things with lifecycle—tasks, notes, reminders. Retrieved through semantic search (RAG) when relevant to the current context.
 
-The memory *mechanism* is architectural—ANA requires it. What the agent *stores* is behavioral—guided by system prompts. However, effective ANA implementations should prompt the agent to persist its evolving domain understanding, not just user preferences. Without this, the agent rediscovers structure each session, undermining the continuity that distinguishes ANA from stateless AI-enhanced systems.
+This distinction emerged from implementation experience: treating all persistent knowledge as retrievable items led to failures where foundational preferences weren't surfaced at the right moment. Some knowledge should be *constitutive* of reasoning, not discovered mid-conversation through probabilistic retrieval.
+
+The memory *mechanism* is architectural—ANA requires it. What the agent *stores* and *where* is behavioral—guided by system prompts. Effective implementations should prompt the agent to distinguish between knowledge that shapes all reasoning (Global Context) versus knowledge relevant to specific queries (Items).
 
 ## 4. The Schema Hint Spectrum
 
@@ -117,8 +118,9 @@ create_task()       create_item()        store()           [pure text]
 update_task()       update_item()        retrieve()
 complete_task()     delete_item()
 assign_project()    query_items()
-                    store_memory()
-                    recall_memory()
+                    append_context()
+                    replace_context()
+                    delete_context()
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Traditional         ← Agent Native →                       Impractical
 ```
@@ -216,19 +218,33 @@ These mechanisms do not eliminate the trust challenge but provide a framework fo
 
 The companion repository implements these concepts through a personal assistant application with the following characteristics:
 
-**Six primitive tools** at the medium-hint level:
+**Seven primitive tools** at the medium-hint level:
 - `create_item`, `update_item`, `delete_item`, `query_items` (CRUD for flexible items)
-- `store_memory`, `recall_memory` (persistence for user patterns, preferences, and the agent's evolving understanding of the problem space)
+- `append_context`, `replace_context`, `delete_context` (Global Context management)
 
 **System prompt** providing domain guidance without rigid rules—teaching the agent how to think about tasks, priorities, and context without enforcing specific schemas.
 
 **Single persistence layer** (ChromaDB) enabling semantic search across all stored information. This is an implementation choice, not an architectural requirement—the system abstracts storage behind a protocol allowing alternative implementations.
 
+One implementation detail worth noting: ChromaDB's semantic search operates on document content, not metadata. Properties stored as metadata (e.g., `due_date: "2026-01-13"`) are invisible to queries like "what's due Tuesday?" The implementation addresses this by embedding properties into document content with dates converted to human-readable format, then stripping them on retrieval. This is a workaround for a specific persistence layer limitation, not an architectural pattern.
+
 **Conversation-based interface** demonstrating the primary interaction pattern, with structured UI as a future extension.
 
 The implementation validates the core hypothesis: meaningful task management emerges from minimal primitives combined with LLM reasoning, without requiring traditional schema-first design.
 
-## 8. Conclusion
+## 8. Design Evolution
+
+ANA is explicitly an architectural experiment. The patterns described in this paper emerged through iterative implementation, not upfront specification. Documenting one such evolution illustrates how ANA projects should expect to adapt.
+
+The original implementation included `store_memory` and `recall_memory` tools—a semantic search layer for all persistent knowledge. During testing, this revealed a failure mode: foundational preferences weren't reliably surfaced at the right moment. The agent stored "prefers deep work in mornings" but semantic search didn't consistently retrieve it when planning a user's day.
+
+The root insight: **some knowledge should be constitutive of reasoning, not dependent on retrieval**. This led to Global Context—always-present knowledge injected into every interaction, analogous to how a system prompt shapes behavior without being queried.
+
+This isn't a failure of the original design but a validation of ANA's core premise: when the agent participates in schema definition, the architecture can evolve based on observed behavior rather than speculative requirements. The abstract `Store` protocol allowed swapping memory implementations without touching tool or agent code.
+
+For detailed design rationale including alternatives considered, see the companion [Global Context Design](global-context.md) document.
+
+## 9. Conclusion
 
 Agent Native Architecture represents a meaningful evolution in how LLM-powered applications can be designed. By positioning the agent as the reasoning core and allowing structure to emerge at runtime, ANA enables capabilities difficult or impossible to achieve in schema-first architectures: cross-domain reasoning, emergent features, immediate personalization, and proactive behavior.
 
