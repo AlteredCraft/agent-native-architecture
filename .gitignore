@@ -17,4 +17,7 @@ logs/
 
 # Data
 .data/
-.letta/
+
+.DS_Store
+.vscode/
+.idea/

@@ -10,7 +10,7 @@ import functools
 import logging
 from typing import Any, Callable
 
-from .store import ChromaStore, Item
+from .store import ChromaStore
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,10 @@ def log_tool_call(func: Callable) -> Callable:
 
 # Initialize stores
 _items_store = ChromaStore(collection_name="items", persist_dir=".data")
-_memory_store = ChromaStore(collection_name="memory", persist_dir=".data")
+_gc_store = ChromaStore(collection_name="global_context", persist_dir=".data")
+
+# Global Context constants
+GC_ITEM_ID = "global_context"
 
 
 # ============================================================================
@@ -132,52 +135,100 @@ def query_items(
 
 
 # ============================================================================
-# Memory
+# Global Context
 # ============================================================================
 
-@log_tool_call
-def store_memory(key: str, value: Any) -> bool:
-    """
-    Store a piece of information for long-term recall.
+def _load_gc_lines() -> list[str]:
+    """Load Global Context and split into lines."""
+    item = _gc_store.get(GC_ITEM_ID)
+    if not item:
+        return []
+    return item.content.split("\n")
 
-    Use this to remember user preferences, patterns, learnings, or
-    any information that should persist across conversations.
+
+def _save_gc_lines(lines: list[str]) -> None:
+    """Join lines and save Global Context."""
+    content = "\n".join(lines)
+    _gc_store.upsert(GC_ITEM_ID, content, {"item_type": "global_context"})
+
+
+def _format_gc_for_display(lines: list[str]) -> str:
+    """Format with line numbers for system prompt injection."""
+    if not lines or all(line == "" for line in lines):
+        return "(empty - populate as you learn about the user)"
+    return "\n".join(f"{i}-- {line}" for i, line in enumerate(lines) if line)
+
+
+def _compact_gc(text: str) -> str:
+    """Remove empty lines between sessions."""
+    import re
+    return re.sub(r'\n{2,}', '\n', text).strip()
+
+
+@log_tool_call
+def append_context(content: str) -> dict:
+    """
+    Add a new line to Global Context.
+
+    Use this to record persistent knowledge about the user: preferences,
+    patterns, constraints, or observations that should shape future reasoning.
 
     Args:
-        key: A descriptive key for the memory (e.g., "user_preference_work_hours")
-        value: The information to store (will be converted to string for embedding)
+        content: The knowledge to add (e.g., "Prefers deep work in mornings")
 
     Returns:
-        True if stored successfully.
+        Confirmation with the new line number.
     """
-    # Store as a document with the key as a property
-    # The value is stringified as content for semantic search
-    content = f"{key}: {value}" if not isinstance(value, str) else value
-    _memory_store.add(content, {"key": key, "value_type": type(value).__name__})
-    return True
+    lines = _load_gc_lines()
+    lines.append(content)
+    _save_gc_lines(lines)
+    return {"line": len(lines) - 1, "content": content}
 
 
 @log_tool_call
-def recall_memory(query: str, limit: int = 5) -> list[dict]:
+def replace_context(line: int, content: str) -> dict | None:
     """
-    Recall relevant memories using semantic search.
+    Update an existing line in Global Context.
+
+    Use this when knowledge needs to be corrected or refined.
 
     Args:
-        query: What to search for (e.g., "user's preferred work hours")
-        limit: Maximum number of memories to return
+        line: The line number to update (0-indexed)
+        content: The new content for this line
 
     Returns:
-        List of relevant memories, ordered by relevance.
+        Confirmation with old and new content, or None if line not found.
     """
-    items = _memory_store.query(text=query, limit=limit)
-    return [
-        {
-            "content": item.content,
-            "key": item.metadata.get("key", ""),
-            "created_at": item.created_at
-        }
-        for item in items
-    ]
+    lines = _load_gc_lines()
+    if line < 0 or line >= len(lines):
+        return None
+    old_content = lines[line]
+    lines[line] = content
+    _save_gc_lines(lines)
+    return {"line": line, "old_content": old_content, "new_content": content}
+
+
+@log_tool_call
+def delete_context(line: int) -> dict | None:
+    """
+    Remove a line from Global Context.
+
+    The line is replaced with an empty string during the session to keep
+    indices stable. Empty lines are compacted at the start of the next session.
+
+    Args:
+        line: The line number to remove (0-indexed)
+
+    Returns:
+        Confirmation with deleted content, or None if line not found.
+    """
+    lines = _load_gc_lines()
+    if line < 0 or line >= len(lines):
+        return None
+    deleted_content = lines[line]
+    lines[line] = ""  # Replace with empty, compacted between sessions
+    _save_gc_lines(lines)
+    return {"line": line, "deleted_content": deleted_content}
 
 
 # ============================================================================
@@ -189,8 +240,9 @@ TOOLS = {
     "update_item": update_item,
     "delete_item": delete_item,
     "query_items": query_items,
-    "store_memory": store_memory,
-    "recall_memory": recall_memory,
+    "append_context": append_context,
+    "replace_context": replace_context,
+    "delete_context": delete_context,
 }
 
 # Tool schemas for OpenAI-compatible function calling
@@ -288,42 +340,55 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "store_memory",
-            "description": "Store information for long-term recall. Use this to remember user preferences, patterns, or learnings that should persist across conversations.",
+            "name": "append_context",
+            "description": "Add a new line to Global Context. Use this to record persistent knowledge about the user: preferences, patterns, constraints, or observations that should shape all future reasoning.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "key": {
+                    "content": {
                         "type": "string",
-                        "description": "A descriptive key (e.g., 'user_preferred_work_hours', 'project_context_acme')"
-                    },
-                    "value": {
-                        "type": "string",
-                        "description": "The information to store"
+                        "description": "The knowledge to add (e.g., 'Prefers deep work in mornings')"
                     }
                 },
-                "required": ["key", "value"]
+                "required": ["content"]
             }
         }
     },
     {
         "type": "function",
         "function": {
-            "name": "recall_memory",
-            "description": "Recall relevant memories using semantic search. Use this to retrieve stored preferences, patterns, or context.",
+            "name": "replace_context",
+            "description": "Update an existing line in Global Context. Use this when knowledge needs to be corrected or refined.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "What to search for (e.g., 'user work preferences')"
-                    },
-                    "limit": {
+                    "line": {
                         "type": "integer",
-                        "description": "Maximum number of memories to return (default 5)"
+                        "description": "The line number to update (0-indexed, as shown in Global Context)"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The new content for this line"
                     }
                 },
-                "required": ["query"]
+                "required": ["line", "content"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_context",
+            "description": "Remove a line from Global Context. Use this when knowledge is no longer relevant. Line indices remain stable during the session.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "line": {
+                        "type": "integer",
+                        "description": "The line number to remove (0-indexed, as shown in Global Context)"
+                    }
+                },
+                "required": ["line"]
             }
         }
     }

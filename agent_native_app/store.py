@@ -51,6 +51,10 @@ class Store(Protocol):
         """Delete an item. Returns True if deleted, False if not found."""
         ...
 
+    def upsert(self, id: str, content: str, metadata: dict | None = None) -> Item:
+        """Create or update an item by ID."""
+        ...
+
     def query(
         self,
         text: str | None = None,
@@ -178,6 +182,31 @@ class ChromaStore:
 
         self._collection.delete(ids=[id])
         return True
+
+    def upsert(self, id: str, content: str, metadata: dict | None = None) -> Item:
+        """Create or update an item by ID."""
+        now = self._now()
+        existing = self.get(id)
+
+        full_metadata = {
+            **(metadata or {}),
+            "created_at": existing.created_at if existing else now,
+            "updated_at": now,
+        }
+
+        self._collection.upsert(
+            ids=[id],
+            documents=[content],
+            metadatas=[full_metadata]
+        )
+
+        return Item(
+            id=id,
+            content=content,
+            metadata=_filter_metadata(full_metadata),
+            created_at=full_metadata["created_at"],
+            updated_at=now,
+        )
 
     def query(
         self,
