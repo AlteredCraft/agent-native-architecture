@@ -96,13 +96,34 @@ We're testing whether a vector database can serve as the *single* persistence la
 - Every item is semantically searchable by default
 - "Find tasks similar to this" just works
 
+**Property Embedding for Semantic Search:**
+
+A key insight: ChromaDB's semantic search only operates on document content, not metadata. Dates like `due_date: "2026-01-13"` stored in metadata are invisible to queries like "what's due on 2026-01-13?"
+
+Our solution: automatically embed properties into the document content before storing, with dates converted to human-readable format. The agent never sees this—properties are stripped on retrieval.
+
+```
+# What gets stored (for semantic search)
+Review quarterly report
+---ANA_PROPS---
+type: task
+status: active
+due date: Tuesday January 13 2026
+
+# What the agent sees (clean API)
+content: "Review quarterly report"
+properties: {type: task, status: active, due_date: 2026-01-13}
+```
+
+Now "what's due Tuesday?" has real semantic similarity to find.
+
 **Tradeoffs we're accepting:**
 - Flat metadata (no nested objects)
 - Less battle-tested for CRUD
 - Embedding cost for every item
 
 **What we hope to gain:**
-- Semantic search on items for free
+- Semantic search on items *and their properties* for free
 - Simpler architecture
 - Natural language queries everywhere
 
@@ -114,15 +135,19 @@ We're testing whether a vector database can serve as the *single* persistence la
 agent_native_app/
 ├── config.py         # Configuration from .env
 ├── logging_config.py # Central logging setup
-├── store.py          # Store protocol + ChromaStore
-├── tools.py          # 6 primitives + OpenAI-compatible schemas
+├── store.py          # Store protocol + ChromaStore (with property embedding)
+├── tools.py          # 7 primitives + OpenAI-compatible schemas
 ├── agent.py          # OpenRouter agent with tool calling
 ├── cli.py            # Interactive REPL
 └── prompts/
     └── system.md     # "How to think" prompt
 
 scripts/
-└── db_describe.py    # Inspect ChromaDB collections
+├── db_describe.py           # Inspect ChromaDB collections
+└── migrate_embed_props.py   # Migration script for property embedding
+
+tests/
+└── test_store.py     # Store module tests (33 tests)
 
 docs/
 ├── article.md                      # Canonical ANA definition

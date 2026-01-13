@@ -12,10 +12,10 @@ flowchart TB
 
     subgraph Agent["LLM Agent"]
         LLM["OpenRouter LLM<br/>(Claude, GPT-4, etc.)"]
-        SysPrompt["System Prompt<br/>'How to Think'"]
+        SysPrompt["System Prompt<br/>'How to Think'<br/>+ Global Context"]
     end
 
-    subgraph Tools["6 Primitive Tools"]
+    subgraph Tools["7 Primitive Tools"]
         direction LR
         subgraph ItemOps["Item Operations"]
             create["create_item()"]
@@ -23,26 +23,28 @@ flowchart TB
             delete["delete_item()"]
             query["query_items()"]
         end
-        subgraph MemoryOps["Memory Operations"]
-            store_mem["store_memory()"]
-            recall["recall_memory()"]
+        subgraph ContextOps["Global Context Operations"]
+            append["append_context()"]
+            replace["replace_context()"]
+            delete_ctx["delete_context()"]
         end
     end
 
     subgraph Protocol["Store Protocol"]
-        StoreAPI["Abstract Interface<br/>add() | get() | update()<br/>delete() | query()"]
+        StoreAPI["Abstract Interface<br/>add() | get() | update()<br/>delete() | query() | upsert()"]
+        PropEmbed["Property Embedding<br/>(dates → human-readable)"]
     end
 
     subgraph ChromaDB["ChromaDB (Single Persistence Layer)"]
         subgraph ItemsCollection["items collection"]
-            ItemDoc["Documents<br/>(semantic content)"]
-            ItemEmbed["Embeddings<br/>(vector search)"]
+            ItemDoc["Documents<br/>(content + embedded props)"]
+            ItemEmbed["Embeddings<br/>(semantic search)"]
             ItemMeta["Metadata<br/>type: task|note|idea<br/>status: active|done<br/>priority: int<br/>project: str<br/>due_date: str<br/>context: str<br/>created_at/updated_at"]
         end
-        subgraph MemoryCollection["memory collection"]
-            MemDoc["Documents<br/>(preference content)"]
-            MemEmbed["Embeddings<br/>(semantic recall)"]
-            MemMeta["Metadata<br/>key: str<br/>value_type: str<br/>created_at/updated_at"]
+        subgraph GCCollection["global_context collection"]
+            GCDoc["Documents<br/>(persistent knowledge)"]
+            GCEmbed["Embeddings"]
+            GCMeta["Metadata<br/>item_type: global_context<br/>created_at/updated_at"]
         end
     end
 
@@ -54,14 +56,16 @@ flowchart TB
     update --> StoreAPI
     delete --> StoreAPI
     query --> StoreAPI
-    store_mem --> StoreAPI
-    recall --> StoreAPI
+    append --> StoreAPI
+    replace --> StoreAPI
+    delete_ctx --> StoreAPI
 
-    StoreAPI --> ItemsCollection
-    StoreAPI --> MemoryCollection
+    StoreAPI --> PropEmbed
+    PropEmbed --> ItemsCollection
+    StoreAPI --> GCCollection
 
     ItemDoc <--> ItemEmbed
-    MemDoc <--> MemEmbed
+    GCDoc <--> GCEmbed
 ```
 
 ### Key Design Decisions
@@ -69,26 +73,40 @@ flowchart TB
 | Aspect | How It Works |
 |--------|--------------|
 | **Semantic Search** | Every item gets embedded — "find similar tasks" works automatically |
+| **Property Embedding** | Properties are embedded in document content with human-readable dates for semantic search |
 | **Flat Metadata** | No nested objects (ChromaDB limitation) — properties are flattened |
 | **Emergent Structure** | `type`, `status`, `project` aren't schema-enforced — LLM decides when to use them |
-| **Memory Recall** | `recall_memory("deep work")` — semantic similarity finds relevant preferences |
+| **Global Context** | Always-present knowledge injected into system prompt — shapes all reasoning |
 | **The Hedge** | `Store` protocol abstracts ChromaDB — can swap to SQLite without touching tools |
 
 ### Data Flow Examples
 
 **Creating a task:**
 ```
-User: "Add a task to review the quarterly report"
+User: "Add a task to review the quarterly report by Tuesday"
   → LLM reasons about intent
-  → Calls create_item(content="review the quarterly report", properties={type: "task", status: "active"})
-  → Store.add() writes to ChromaDB items collection
-  → Content embedded for future semantic search
+  → Calls create_item(content="review the quarterly report",
+                      properties={type: "task", status: "active", due_date: "2026-01-13"})
+  → Store.add() embeds properties into content:
+      "review the quarterly report\n---ANA_PROPS---\ntype: task\nstatus: active\ndue date: Tuesday January 13 2026"
+  → Writes to ChromaDB items collection
+  → Returns clean content to agent (properties stripped)
 ```
 
-**Recalling preferences:**
+**Finding tasks by date (semantic search):**
 ```
-User: "What should I focus on today?"
-  → LLM calls recall_memory("work preferences focus")
-  → Semantic search finds "prefers deep work in the morning"
-  → LLM incorporates into recommendation
+User: "What's due on Tuesday?"
+  → LLM calls query_items(text="due Tuesday")
+  → Semantic search matches embedded "due date: Tuesday January 13 2026"
+  → Returns items with clean content (properties stripped)
+  → LLM presents results
+```
+
+**Using Global Context:**
+```
+User: "I prefer to do deep work in the mornings"
+  → LLM calls append_context("Prefers deep work in mornings")
+  → Stored in global_context collection
+  → Injected into system prompt for ALL future conversations
+  → Shapes recommendations without explicit recall
 ```
