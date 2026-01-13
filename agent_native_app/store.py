@@ -16,10 +16,99 @@ from chromadb.config import Settings
 # Internal metadata keys excluded from user-facing metadata
 _INTERNAL_KEYS = {"created_at", "updated_at"}
 
+# Property embedding constants
+_PROPS_DELIMITER = "\n---ANA_PROPS---\n"
+_DATE_KEY_SUFFIXES = ("_date", "_at", "_time", "_due", "_deadline")
+_DATE_KEY_NAMES = frozenset(("due", "deadline", "scheduled", "start", "end"))
+
 
 def _filter_metadata(metadata: dict) -> dict:
     """Remove internal keys from metadata for user-facing output."""
     return {k: v for k, v in metadata.items() if k not in _INTERNAL_KEYS}
+
+
+def _is_date_key(key: str) -> bool:
+    """Check if a key name suggests it contains a date value."""
+    key_lower = key.lower()
+    return (
+        any(key_lower.endswith(suffix) for suffix in _DATE_KEY_SUFFIXES)
+        or key_lower in _DATE_KEY_NAMES
+    )
+
+
+def _format_date_value(value: str) -> str:
+    """
+    Convert ISO date/datetime to human-readable format.
+
+    Examples:
+        '2026-01-13' -> 'Monday January 13 2026'
+        '2026-01-13T14:30:00' -> 'Monday January 13 2026 at 2:30 PM'
+
+    Returns original value if not a recognizable date format.
+    """
+    # Try ISO date: YYYY-MM-DD
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if "T" in value:
+            # Has time component
+            return dt.strftime("%A %B %d %Y at %-I:%M %p").replace(" 0", " ")
+        else:
+            # Date only
+            return dt.strftime("%A %B %d %Y").replace(" 0", " ")
+    except (ValueError, AttributeError):
+        return value
+
+
+def _embed_properties(content: str, metadata: dict | None) -> str:
+    """
+    Embed properties into document content for semantic search.
+
+    Appends a human-readable representation of properties after a delimiter.
+    Dates are converted to readable format (e.g., 'Monday January 13 2026').
+
+    Args:
+        content: Original document content
+        metadata: Properties to embed (internal keys excluded)
+
+    Returns:
+        Content with properties appended after delimiter, or original if no props.
+    """
+    if not metadata:
+        return content
+
+    # Filter out internal keys
+    props = {k: v for k, v in metadata.items() if k not in _INTERNAL_KEYS}
+    if not props:
+        return content
+
+    # Format each property, converting dates to human-readable
+    lines = []
+    for key, value in props.items():
+        if _is_date_key(key) and isinstance(value, str):
+            formatted_value = _format_date_value(value)
+        else:
+            formatted_value = value
+        # Convert snake_case to readable format
+        readable_key = key.replace("_", " ")
+        lines.append(f"{readable_key}: {formatted_value}")
+
+    return content + _PROPS_DELIMITER + "\n".join(lines)
+
+
+def _strip_properties(stored_content: str) -> str:
+    """
+    Strip embedded properties from stored content.
+
+    Args:
+        stored_content: Content as stored in ChromaDB (may have embedded props)
+
+    Returns:
+        Original content without the properties section.
+    """
+    if _PROPS_DELIMITER not in stored_content:
+        return stored_content
+
+    return stored_content.split(_PROPS_DELIMITER, 1)[0]
 
 
 @dataclass
@@ -97,10 +186,10 @@ class ChromaStore:
         return datetime.now(timezone.utc).isoformat()
 
     def _result_to_item(self, id: str, document: str, metadata: dict) -> Item:
-        """Convert ChromaDB result to Item."""
+        """Convert ChromaDB result to Item, stripping embedded properties."""
         return Item(
             id=id,
-            content=document,
+            content=_strip_properties(document),
             metadata=_filter_metadata(metadata),
             created_at=metadata.get("created_at", ""),
             updated_at=metadata.get("updated_at", "")
@@ -118,9 +207,12 @@ class ChromaStore:
             "updated_at": now
         }
 
+        # Embed properties into document for semantic search
+        stored_content = _embed_properties(content, metadata)
+
         self._collection.add(
             ids=[item_id],
-            documents=[content],
+            documents=[stored_content],
             metadatas=[full_metadata]
         )
 
@@ -160,16 +252,20 @@ class ChromaStore:
             "updated_at": self._now()
         }
 
+        # Embed properties for semantic search (use user-facing metadata)
+        user_metadata = _filter_metadata(new_metadata)
+        stored_content = _embed_properties(new_content, user_metadata)
+
         self._collection.update(
             ids=[id],
-            documents=[new_content],
+            documents=[stored_content],
             metadatas=[new_metadata]
         )
 
         return Item(
             id=id,
             content=new_content,
-            metadata=_filter_metadata(new_metadata),
+            metadata=user_metadata,
             created_at=existing.created_at,
             updated_at=new_metadata["updated_at"]
         )
@@ -194,9 +290,12 @@ class ChromaStore:
             "updated_at": now,
         }
 
+        # Embed properties for semantic search
+        stored_content = _embed_properties(content, metadata)
+
         self._collection.upsert(
             ids=[id],
-            documents=[content],
+            documents=[stored_content],
             metadatas=[full_metadata]
         )
 
