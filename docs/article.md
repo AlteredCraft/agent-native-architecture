@@ -2,7 +2,7 @@
 
 ## Abstract
 
-We introduce **Agent Native Architecture (ANA)**, a software design paradigm where an AI agent serves as the reasoning core of an application, with data structure emerging at runtime through the agent's understanding rather than being predetermined at design time. ANA represents an evolution beyond AI-enhanced and AI-first approaches, inverting the traditional relationship between schema and understanding: structured data becomes an *output* of reasoning, not an *input* required from users or hardcoded by developers. We define the core requirements for ANA, introduce the concept of *schema hint level* as a key design dimension, and discuss the tradeoffs inherent in this approach. A companion implementation—an agent-native personal assistant—validates these concepts through experimentation.
+We introduce **Agent Native Architecture (ANA)**, a software design paradigm where an AI agent serves as the reasoning core of an application, with data structure emerging at runtime through the agent's understanding rather than being predetermined at design time. ANA represents an evolution beyond AI-enhanced and AI-first approaches, inverting the traditional relationship between schema and understanding: structured data becomes an *output* of reasoning, not an *input* required from users or hardcoded by developers. We define the core requirements for ANA—including a determinism model that places orchestration in the agent while tools provide predictable operations—and introduce the *determinism spectrum* as a key design dimension. A companion implementation explores these concepts through one point on this spectrum: a personal assistant that pushes toward high agent autonomy.
 
 ## 1. Introduction
 
@@ -12,7 +12,7 @@ A more recent pattern, *AI-first* design, centers the application around AI capa
 
 This paper proposes a further evolution: **Agent Native Architecture**, where the LLM agent is not merely central but *generative* of structure itself. The schema emerges from the agent's reasoning at runtime, rather than being predetermined by developers.
 
-We explore this paradigm through a concrete implementation—a personal assistant/todo application—chosen for its familiarity and discrete scope. The contribution is not the application itself but the architectural patterns it reveals.
+We first define the ANA paradigm: its core requirements, its model for balancing determinism with agent autonomy, and its tradeoffs. We then explore these concepts through one implementation—a personal assistant that sits toward the high-autonomy end of the design spectrum. The contribution is the architectural framework itself; the application illustrates rather than defines it.
 
 ### 1.1 The Fundamental Inversion
 
@@ -63,105 +63,120 @@ Structure is determined during execution, not fixed at design time. The agent de
 
 In practice, this manifests through flexible primitives. Rather than `create_task(title, due_date, project_id)`, the agent operates with `create_item(content, properties)` where properties are open-ended. The agent reasons about what structure is appropriate for each interaction.
 
-### 3.3 Memory Mechanism
+### 3.3 Global Awareness
 
 Agents require persistence across interactions to learn user patterns, maintain context, and improve over time. Within a single session, the LLM's context window may suffice. For agents operating across multiple sessions—where continuity matters but the context window resets—external memory becomes essential.
 
-ANA distinguishes two categories of persistent knowledge:
+More specifically, ANA requires a mechanism for **user-specific adaptation beyond the system prompt**. The system prompt is developer-controlled, defining the agent's persona and general behavior. But the agent must also accumulate knowledge about *this particular user*—their preferences, patterns, constraints, and context—and this knowledge must shape reasoning.
 
-- **Constitutive knowledge** (Global Context): Foundational understanding that should *always be present*—user preferences, behavioral patterns, constraints, and the agent's evolving model of the problem space. This knowledge shapes how the agent reasons and should not depend on retrieval. Global Context is analogous to the system prompt: both are always-present knowledge that shapes reasoning. The distinction is authorship—the system prompt is developer-controlled (defining agent persona and behavior), while Global Context is agent-controlled (adapting to a specific user over time).
-- **Episodic knowledge** (Items): Discrete things with lifecycle—tasks, notes, reminders. Retrieved through semantic search (RAG) when relevant to the current context.
+A critical architectural insight: not all persistent knowledge should depend on retrieval. Some knowledge must be *constitutive* of reasoning—always present, shaping every interaction—rather than discovered through semantic search. User preferences like "I prefer deep work in mornings" or "never schedule meetings on Fridays" need to inform planning consistently, not probabilistically when retrieval happens to surface them.
 
-This distinction emerged from implementation experience: treating all persistent knowledge as retrievable items led to failures where foundational preferences weren't surfaced at the right moment. Some knowledge should be *constitutive* of reasoning, not discovered mid-conversation through probabilistic retrieval.
+How this is implemented varies. The requirement is the capability: the agent must be globally aware of user-specific context that evolves over time, with foundational knowledge always present rather than retrieved.
 
-The memory *mechanism* is architectural—ANA requires it. What the agent *stores* and *where* is behavioral—guided by system prompts. Effective implementations should prompt the agent to distinguish between knowledge that shapes all reasoning (Global Context) versus knowledge relevant to specific queries (Items).
+## 4. The Determinism Model
 
-## 4. The Schema Hint Spectrum
+ANA introduces a specific model for where determinism lives in the system—and this model inverts traditional software architecture.
 
-Agent Native does not mean "no schema." It means the agent participates in schema definition. How much structure developers provide is a design choice—what we term the **schema hint level**.
+**Traditional software**: Code provides deterministic orchestration. Given state X and input Y, the execution path is predetermined. The developer specifies: "if user clicks submit, validate fields, then save to database, then show confirmation." Data is the variable; logic is fixed.
 
-### 4.1 Hint Surfaces
+**Agent Native**: Tools provide deterministic operations. Given a tool call with specific parameters, the result is predictable. But *which* tools get called, in *what* order, with *what* parameters—this is determined by the agent's reasoning. Orchestration is the variable; operations are fixed.
 
-Schema hints can be applied at multiple architectural layers:
+```
+Traditional:    Fixed Logic    →  Variable Data    →  Predictable Path
+Agent Native:   Fixed Tools    →  Variable Reasoning →  Emergent Path
+```
 
-| Layer | High-hint | Low-hint |
-|-------|-----------|----------|
+This is how ANA balances reliability with adaptability. You control what operations exist and their guarantees—a `create_item` call will always create an item; a `delete_item` call will always delete one. The agent controls how these operations combine to achieve goals.
+
+The practical implication: **tools are your lever for adding determinism**. If you need guaranteed behavior for certain operations, encode that behavior in tools. The agent cannot circumvent what tools enforce. If you need flexibility, keep tools generic and let the agent reason about how to use them.
+
+This model explains why ANA is not "non-deterministic chaos" (see Section 7.1): operations remain auditable and traceable. It also explains the core tradeoff: you gain adaptive capability by accepting that orchestration emerges from reasoning rather than specification.
+
+## 5. The Determinism Spectrum
+
+The determinism model (Section 4) establishes that tools provide deterministic operations while the agent provides orchestration. But how much determinism should tools encode? This is a design choice with significant implications—what we call position on the **determinism spectrum**.
+
+### 5.1 Determinism Surfaces
+
+Determinism can be injected at multiple architectural layers:
+
+| Layer | High Determinism | Low Determinism |
+|-------|------------------|-----------------|
 | **Tools** | `create_task(title, due_date, project)` | `create_item(content, properties)` |
 | **System Prompt** | "Tasks have priorities 1-4; statuses are: active, done, blocked" | "Items can have any properties you find useful" |
 | **Examples** | Few-shot examples with rigid structure | Examples demonstrating flexible, emergent structure |
 
-### 4.2 The Design Space
+### 5.2 The Design Space
 
-These hint surfaces create a two-dimensional design space:
+These determinism surfaces create a two-dimensional design space:
 
 ```
-                    Tool Hints
+                 Tool Determinism
                  Low ←────────→ High
               ┌─────────────────────┐
         Low   │  Maximum emergence  │  Tools constrain,
    Prompt     │  (experimental)     │  prompt is loose
-   Hints      ├─────────────────────┤
+   Determinism├─────────────────────┤
         High  │  Prompt guides,     │  Traditional
               │  tools are flexible │  (fully specified)
               └─────────────────────┘
 ```
 
-### 4.3 The Spectrum
+### 5.3 The Spectrum
 
 Along the tool dimension specifically:
 
 ```
-Schema Hint Level
+Determinism Level
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-High-hint           Medium-hint          Low-hint          Zero-hint
-create_task()       create_item()        store()           [pure text]
-update_task()       update_item()        retrieve()
-complete_task()     delete_item()
-assign_project()    query_items()
-                    append_context()
-                    replace_context()
-                    delete_context()
+High                Medium               Low               Minimal
+domain_create()     generic_create()     store()           [pure text]
+domain_update()     generic_update()     retrieve()
+domain_action()     generic_delete()
+                    generic_query()
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Traditional         ← Agent Native →                       Impractical
 ```
 
-**High-hint** tools encode domain concepts. The schema is mostly predetermined; the agent fills in values within constraints. Here, the agent primarily serves as a *translator*—converting natural language into predefined structure rather than determining what structure should exist.
+**High determinism** tools encode domain concepts. The schema is mostly predetermined; the agent fills in values within constraints. Here, the agent primarily serves as a *translator*—converting natural language into predefined structure rather than determining what structure should exist.
 
-**Medium-hint** tools provide operation semantics (CRUD) without domain constraints. The agent decides what "item" means and what properties matter.
+**Medium determinism** tools provide operation semantics (CRUD) without domain constraints. The agent decides what "item" means and what properties matter.
 
-**Low-hint** tools offer minimal structure. The agent must reason about everything, including whether an operation is a create or update.
+**Low determinism** tools offer minimal structure. The agent must reason about everything, including whether an operation is a create or update.
 
-### 4.4 Optimal Balance
+### 5.4 Finding Balance
 
-For most ANA implementations, the optimal position is **low-hint tools combined with medium-hint system prompts**. This provides:
+Position on the spectrum is a design choice, not a quality gradient. Different applications warrant different positions based on their requirements for predictability versus adaptability.
 
-- **Determinism at the operation level**: You know a `create_item` occurred; operations are auditable
+That said, a common effective pattern combines **medium-determinism tools with medium-determinism prompts**:
+
+- **Determinism at the operation level**: Operations are auditable—you know what tool was called with what parameters
 - **Flexibility at the domain level**: The agent decides what properties matter for each item
 - **Guidance without constraint**: The system prompt teaches conventions and patterns without enforcing rigid rules
 
-This balance acknowledges a practical reality: even with minimal tool hints, the agent will develop implicit conventions. Providing operation-level structure (CRUD) captures well-understood semantics without constraining domain modeling.
+This balance acknowledges a practical reality: even with generic tools, the agent will develop implicit conventions. Providing operation-level structure (CRUD) captures well-understood semantics without constraining domain modeling.
 
-## 5. Capabilities Enabled
+## 6. Capabilities Enabled
 
 Agent Native Architecture changes not just how applications are built but what becomes possible.
 
-### 5.1 Runtime Schema Emergence
+### 6.1 Runtime Schema Emergence
 
 The agent determines appropriate structure for each item based on context. A task might acquire `priority`, `due_date`, and `project` properties. A quick note might have only `context`. The same primitive serves both—structure emerges from understanding rather than rigid field requirements.
 
-### 5.2 Cross-Domain Reasoning
+### 6.2 Cross-Domain Reasoning
 
 Traditional applications are silos; information in one system doesn't inform another. An agent can connect information that users would never manually link: flight times, task deadlines, contact timezone differences, and user preferences can all inform a single recommendation. This requires structure—but structure the agent can reason across, not structure that isolates domains.
 
-### 5.3 Emergent Features
+### 6.3 Emergent Features
 
 Capabilities need not be predetermined. "Show me everything related to the Q3 launch" requires no special feature—the agent queries semantically. "What patterns do you see in my completed tasks?" requires no analytics dashboard—the agent reasons over available data. Features emerge from understanding combined with tools, not from predetermined code paths.
 
-### 5.4 Learning Without Retraining
+### 6.4 Learning Without Retraining
 
 As users provide feedback, the agent adapts through memory. "I prefer deep work in the morning" is stored and influences future recommendations. Behavior changes within interactions, not deployment cycles. This is fundamentally different from traditional ML systems requiring retraining—adaptation is immediate through in-context learning and memory retrieval.
 
-### 5.5 Proactive Behavior
+### 6.5 Proactive Behavior
 
 Because the agent manages structure and maintains memory, it can notice patterns and initiate action: "You've rescheduled this task three times. Want to break it down or delegate it?"
 
@@ -169,23 +184,19 @@ This capability emerges directly from ANA's core properties. The agent controls 
 
 Not all ANA applications require proactivity, but the architecture enables it. The agent has sufficient context (memory), capability (tools), and understanding (structure it created) to move beyond purely reactive behavior.
 
-### 5.6 Future Direction: Adaptive Interfaces
+## 7. Boundaries and Tradeoffs
 
-The ANA pattern extends naturally to user interfaces. Provide the agent with UI primitives and interfaces can reshape based on user intent. "Show me tasks grouped by energy level, not project" becomes achievable without developer intervention. This represents a significant extension of the paradigm warranting separate exploration.
-
-## 6. Boundaries and Tradeoffs
-
-### 6.1 What ANA Is Not
+### 7.1 What ANA Is Not
 
 **Not "chatbot replaces UI."** Structured interfaces retain value for glanceable information, quick actions, and spatial navigation. The shift is in control: the agent becomes primary for complex or ambiguous tasks; structured UI handles rapid, well-defined interactions.
 
 **Not schema-less.** The agent produces structure; it does not avoid it. Items have properties; memories are retrievable by semantic relevance; operations have results. The difference is *who defines* that structure and *when*—the agent at runtime rather than developers at design time.
 
-**Not non-deterministic chaos.** Schema hints at tool and prompt layers provide a foundation of determinism. Operations are auditable; tool calls are traceable. The agent's reasoning is flexible, but the operations it produces are concrete and logged.
+**Not non-deterministic chaos.** Tools provide deterministic operations (Section 4); the agent decides orchestration, but each operation is auditable and traceable. The agent's reasoning is flexible, but the operations it produces are concrete and logged.
 
 **Not universally applicable.** ANA suits domains characterized by ambiguity, personalization, and evolving requirements—personal assistants, knowledge work tools, creative applications. Systems requiring deterministic guarantees (financial ledgers, safety-critical systems) need architectural properties ANA does not provide.
 
-### 6.2 The Core Tradeoff
+### 7.2 The Core Tradeoff
 
 ANA trades deterministic predictability for adaptive capability. In traditional architectures, behavior is fully specified: given input X, the system produces output Y. In ANA, behavior emerges from reasoning: given input X, the agent determines appropriate action based on context, memory, and understanding.
 
@@ -203,7 +214,7 @@ The tradeoff is inappropriate when:
 - Audit trails require exact reproducibility
 - Users need guaranteed response times
 
-### 6.3 Trust and Transparency
+### 7.3 Trust and Transparency
 
 Non-deterministic systems require different trust mechanisms than deterministic ones. Users cannot rely on "I clicked this button, so that happened." Instead, trust builds through:
 
@@ -214,48 +225,95 @@ Non-deterministic systems require different trust mechanisms than deterministic 
 
 These mechanisms do not eliminate the trust challenge but provide a framework for navigating it.
 
-## 7. Implementation Notes
+---
 
-The companion repository implements these concepts through a personal assistant application with the following characteristics:
+The preceding sections define ANA as an architectural paradigm. The following sections explore these concepts through one concrete implementation: a personal assistant that sits toward the high-autonomy end of the determinism spectrum. This implementation illustrates the patterns—it does not define them.
 
-**Seven primitive tools** at the medium-hint level:
-- `create_item`, `update_item`, `delete_item`, `query_items` (CRUD for flexible items)
-- `append_context`, `replace_context`, `delete_context` (Global Context management)
+---
 
-**System prompt** providing domain guidance without rigid rules—teaching the agent how to think about tasks, priorities, and context without enforcing specific schemas.
+## 8. Exploring ANA: A Personal Assistant
 
-**Single persistence layer** (ChromaDB) enabling semantic search across all stored information. This is an implementation choice, not an architectural requirement—the system abstracts storage behind a protocol allowing alternative implementations.
+The companion repository implements ANA through a personal assistant application. This implementation makes specific choices along the determinism spectrum:
+
+- **Position**: Medium-determinism tools with medium-determinism prompts, pushing toward agent autonomy
+- **Domain**: Personal task and knowledge management—chosen for familiarity and discrete scope
+- **Goal**: Validate whether meaningful productivity features emerge from minimal primitives plus LLM reasoning
+
+### 8.1 Design Choices
+
+**Seven primitive tools** at medium determinism:
+- `create_item`, `update_item`, `delete_item`, `query_items` — CRUD for flexible items
+- `append_context`, `replace_context`, `delete_context` — Global Context management
+
+These tools provide operation-level determinism (you know what operation occurred) without domain-level constraint (the agent decides what properties matter for each item).
+
+**System prompt** providing domain guidance without rigid rules—teaching the agent how to think about tasks, priorities, and context without enforcing specific schemas. The prompt suggests conventions (`type: task`, `status: active`) but doesn't mandate them.
+
+**Single persistence layer** (ChromaDB) enabling semantic search across all stored information. This is an implementation choice, not an architectural requirement—the system abstracts storage behind a `Store` protocol allowing alternative implementations.
+
+**Conversation-based interface** demonstrating the primary interaction pattern, with adaptive UI as a future extension (see Section 9).
 
 One implementation detail worth noting: ChromaDB's semantic search operates on document content, not metadata. Properties stored as metadata (e.g., `due_date: "2026-01-13"`) are invisible to queries like "what's due Tuesday?" The implementation addresses this by embedding properties into document content with dates converted to human-readable format, then stripping them on retrieval. This is a workaround for a specific persistence layer limitation, not an architectural pattern.
 
-**Conversation-based interface** demonstrating the primary interaction pattern, with structured UI as a future extension.
+### 8.2 Global Context Implementation
 
-The implementation validates the core hypothesis: meaningful task management emerges from minimal primitives combined with LLM reasoning, without requiring traditional schema-first design.
+Section 3.3 establishes that ANA requires a mechanism for user-specific adaptation with always-present foundational knowledge. This implementation addresses that requirement through **Global Context**: a separate collection of agent-managed knowledge injected into every interaction.
 
-## 8. Design Evolution
+The implementation distinguishes two categories of persistent knowledge:
+
+- **Constitutive knowledge** (Global Context): Foundational understanding that should *always be present*—user preferences, behavioral patterns, constraints, and the agent's evolving model of the problem space. Injected into the system prompt for every interaction.
+- **Episodic knowledge** (Items): Discrete things with lifecycle—tasks, notes, reminders. Retrieved through semantic search (RAG) when relevant to the current context.
+
+Global Context is analogous to the system prompt: both are always-present knowledge that shapes reasoning. The distinction is authorship—the system prompt is developer-controlled (defining agent persona and behavior), while Global Context is agent-controlled (adapting to a specific user over time).
+
+The three Global Context tools (`append_context`, `replace_context`, `delete_context`) give the agent control over this knowledge. The system prompt guides the agent on what belongs in Global Context versus what should be stored as Items.
+
+### 8.3 Design Evolution
 
 ANA is explicitly an architectural experiment. The patterns described in this paper emerged through iterative implementation, not upfront specification. Documenting one such evolution illustrates how ANA projects should expect to adapt.
 
 The original implementation included `store_memory` and `recall_memory` tools—a semantic search layer for all persistent knowledge. During testing, this revealed a failure mode: foundational preferences weren't reliably surfaced at the right moment. The agent stored "prefers deep work in mornings" but semantic search didn't consistently retrieve it when planning a user's day.
 
-The root insight: **some knowledge should be constitutive of reasoning, not dependent on retrieval**. This led to Global Context—always-present knowledge injected into every interaction, analogous to how a system prompt shapes behavior without being queried.
+The root insight: **some knowledge should be constitutive of reasoning, not dependent on retrieval**. This led to the Global Context pattern described above.
 
 This isn't a failure of the original design but a validation of ANA's core premise: when the agent participates in schema definition, the architecture can evolve based on observed behavior rather than speculative requirements. The abstract `Store` protocol allowed swapping memory implementations without touching tool or agent code.
 
 For detailed design rationale including alternatives considered, see the companion [Global Context Design](global-context.md) document.
 
-## 9. Conclusion
+## 9. Future Directions
+
+### 9.1 Adaptive Interfaces
+
+The ANA pattern extends naturally to user interfaces. The same principle—agent determines structure at runtime—applies to presentation.
+
+Provide the agent with UI primitives (layout components, visualization types, interaction patterns) and interfaces can reshape based on user intent. "Show me tasks grouped by energy level, not project" becomes achievable without developer intervention. The agent reasons about what view best serves the current goal.
+
+This represents the next experiment for the companion implementation: extending from conversation-based interaction to agent-driven interface adaptation.
+
+### 9.2 Other Spectrum Positions
+
+The companion implementation explores one position on the determinism spectrum (medium-determinism tools, medium-determinism prompts). Other positions warrant exploration:
+
+- **Higher determinism**: Domain-specific tools with more constraints, for applications requiring more predictable behavior
+- **Lower determinism**: More generic primitives, for applications prioritizing maximum adaptability
+- **Asymmetric positions**: High tool determinism with low prompt determinism, or vice versa
+
+Each position trades off differently between reliability and adaptability. The spectrum framework (Section 5) provides vocabulary for these design decisions; implementations across the spectrum would validate or refine the framework.
+
+## 10. Conclusion
 
 Agent Native Architecture represents a meaningful evolution in how LLM-powered applications can be designed. By positioning the agent as the reasoning core and allowing structure to emerge at runtime, ANA enables capabilities difficult or impossible to achieve in schema-first architectures: cross-domain reasoning, emergent features, immediate personalization, and proactive behavior.
 
-A practical advantage deserves emphasis: ANA systems are significantly easier to tune toward desired behavior. Adjusting a system prompt or modifying tool hints is far more accessible than refactoring tightly-coupled schemas. This makes iteration faster and lowers the barrier for non-engineers to shape system behavior.
+A practical advantage deserves emphasis: ANA systems are significantly easier to tune toward desired behavior. Adjusting a system prompt or modifying tool definitions is far more accessible than refactoring tightly-coupled schemas. This makes iteration faster and lowers the barrier for non-engineers to shape system behavior.
 
 The approach is not universally applicable. It trades deterministic predictability for adaptive capability—a tradeoff appropriate for domains characterized by ambiguity and personalization, inappropriate for domains requiring guaranteed behavior.
 
 The key conceptual contributions are:
 1. **The fundamental inversion**: Structure as output, not input
-2. **Schema hint level** as a design dimension with multiple surfaces (tools, system prompts, examples)
-3. **Clear criteria** distinguishing ANA from AI-enhanced and AI-first approaches
+2. **The determinism model**: Tools provide deterministic operations; agents provide orchestration
+3. **The determinism spectrum**: A design dimension for balancing reliability and adaptability
+4. **Global awareness**: The requirement for user-specific adaptation with always-present foundational knowledge
+5. **Clear criteria** distinguishing ANA from AI-enhanced and AI-first approaches
 
 We offer this framework not as a complete theory but as a working vocabulary for practitioners building LLM-centered applications. The paradigm is nascent; we expect the patterns to evolve as the community accumulates implementation experience.
 
