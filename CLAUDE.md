@@ -6,8 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an **Agent Native Architecture (ANA)** experiment: a personal assistant where the LLM is the reasoning core, not an add-on. The key inversion is that structured data is an *output* of the agent's understanding, not an *input* required from users or predetermined by developers.
 
-See [docs/article.md](docs/article.md) for the canonical ANA definition.
-
 ## Commands
 
 ```bash

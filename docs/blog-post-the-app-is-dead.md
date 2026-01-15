@@ -171,7 +171,3 @@ The assistant is just getting started.
 - [Letta (MemGPT)](https://www.letta.com/) — Long-term memory for AI assistants
 - [LangChain: Agent Architectures](https://blog.langchain.dev/) — Tool use and orchestration patterns
 - [Simon Willison's Weblog](https://simonwillison.net/) — Practical explorations of LLM capabilities
-
-## See Also
-
-- [Agent Native Architecture](article.md) — Formal definition of ANA with core requirements and design dimensions
