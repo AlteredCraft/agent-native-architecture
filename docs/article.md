@@ -8,7 +8,7 @@ We introduce **Agent Native Architecture (ANA)**, a software design paradigm whe
 
 The integration of large language models (LLMs) into software applications has followed a predictable pattern: take an existing application architecture, identify features that could benefit from language understanding, and add AI capabilities as an enhancement layer. This *AI-enhanced* approach treats the LLM as a sophisticated feature rather than a foundational component.
 
-A more recent pattern, *AI-first* design, centers the application around AI capabilities from inception. However, even AI-first applications typically maintain traditional strict schema-driven architectures. The data model is defined at design time; the AI operates within those structural constraints.
+A more recent pattern, *AI-first* design, centers the application around AI capabilities from inception. However, even AI-first applications typically maintain traditional strict schema-driven architectures. The data model is defined at design time; the AI operates within those structural constraints. Some applications are beginning to blur these boundaries. Jottie, a note-taking app, demonstrates real-time structure emergence: as a user types "finish my post by end of today," the interface extracts a due date and shifts from tag to entity classification without explicit user action. Whether such applications represent full schema emergence or sophisticated parsing into predetermined structures varies by implementation; the observable behavior points toward the patterns this paper formalizes.
 
 This paper proposes a further evolution: **Agent Native Architecture**, where the LLM agent is not merely central but *generative* of structure itself. The schema emerges from the agent's reasoning at runtime, rather than being predetermined by developers.
 
@@ -134,8 +134,6 @@ Two primary surfaces shape agent behavior:
 
 ### 5.2 The Design Space
 
-{Replace the term "sweet spot", it's too informal.}
-
 These surfaces create a two-dimensional design space:
 
 ```
@@ -151,8 +149,8 @@ These surfaces create a two-dimensional design space:
                  ├────────────────┼────────────────┤
                  │ C              │ D              │
      High        │  PROMPT-GUIDED │  TRADITIONAL   │
-                 │  Agent Native  │  Fully         │
-                 │  sweet spot    │  specified     │
+                 │  ANA's natural │  Fully         │
+                 │  position      │  specified     │
                  │                │                │
                  └────────────────┴────────────────┘
 ```
@@ -161,7 +159,8 @@ These surfaces create a two-dimensional design space:
 
 **Tool-Driven** (B): Domain concepts encoded in tools. The agent translates natural language into predefined structures. Predictable but inflexible.
 
-**Prompt-Guided** (C): Generic tools with detailed guidance. The agent has operational flexibility but follows conventions. This is the ANA sweet spot for many applications.
+**Prompt-Guided** (C): Generic tools with detailed guidance. The agent has operational flexibility but follows conventions. This is a natural position for ANA implementations.
+
 **Traditional** (D): Fully specified behavior. The agent has little discretion. At this point, you may not need an agent at all.
 
 ### 5.3 Tool Constraint in Practice
@@ -196,7 +195,7 @@ Users interact naturally without learning schemas. "Remind me to call Mom before
 
 ### 6.2 Cross-Domain Reasoning
 
-Traditional applications require explicit integration work to connect domains. Flight data lives in one system, tasks in another, contacts in a third. An agent with access to multiple domains can reason across them naturally: flight times, task deadlines, contact timezone differences, and user preferences can all inform a single recommendation. This isn't about eliminating structure; it's about creating structure the agent can reason across rather than structure that isolates domains.
+Traditional applications require explicit integration work to connect domains. Flight data lives in one system, tasks in another, contacts in a third. An agent with access to multiple domains can reason across them naturally: flight times, task deadlines, contact timezone differences, and user preferences can all inform a single recommendation. This isn't about eliminating structure; it's about creating structure the agent can reason across rather than structure that isolates domains. Expose these domains through generic tools, and the agent can integrate them at runtime.
 
 ### 6.3 Emergent Features
 
@@ -220,7 +219,7 @@ Not all ANA applications require proactivity, but the architecture enables it. T
 
 **Not "chatbot replaces UI."** Structured interfaces retain value for glanceable information, quick actions, and spatial navigation. The shift is in control: the agent becomes primary for complex or ambiguous tasks; structured UI handles rapid, well-defined interactions.
 
-**Schema is not abandoned.** Tools impose minimal structure. A `create_item(content, properties)` call requires content and accepts properties; this is a schema, just a flexible one. The agent produces structure; it does not avoid it. Items have properties; memories are retrievable by semantic relevance; operations have results. The difference is *who defines* that structure and *when*: the agent at runtime rather than developers at design time.
+**Schema is not abandoned.** Tools impose the level of structure needed for a system. A `create_item(content, properties)` call requires content and accepts properties; this is a schema, just a flexible one. The agent produces structure; it does not avoid it. Items have properties; memories are retrievable by semantic relevance; operations have results. The difference is *who defines* that structure and *when*: the agent at runtime rather than developers at design time.
 
 **Not non-deterministic chaos.** Tools provide deterministic operations (Section 4); the agent decides orchestration, but each operation is auditable and traceable. The agent's reasoning is flexible, but the operations it produces are concrete and logged.
 
@@ -277,6 +276,8 @@ The companion repository implements ANA through a personal assistant application
 - **Domain**: Personal task and knowledge management, chosen for familiarity and discrete scope
 - **Goal**: Validate whether meaningful productivity features emerge from minimal primitives plus LLM reasoning
 
+[TODO: add screenshot of the app UI]
+
 ### 8.1 Design Choices
 
 **Seven primitive tools** with minimal constraint:
@@ -299,17 +300,20 @@ Section 3.3 establishes that ANA requires always-present foundational knowledge.
 
 The implementation provides three tools for the agent to manage this knowledge: `append_context`, `replace_context`, and `delete_context`. The system prompt guides the agent on what belongs in Global Context (preferences, patterns, constraints) versus what should be stored as Items (tasks, notes, reminders).
 
-### 8.3 Design Evolution
+In practice, the system prompt template includes a global context placeholder that gets populated before each LLM call. As mentioned the agent has tools to add, alter, remove entires by line number:
+```
+You are a personal assistant that helps manage tasks {System prompt continues...}
 
-ANA is explicitly an architectural experiment. The patterns described in this paper emerged through iterative implementation, not upfront specification. Documenting one such evolution illustrates how ANA projects should expect to adapt.
+<global_context>
+0-- User prefers deep work in mornings, avoid scheduling meetings before 11am
+1-- Currently focused on Q3 launch; high priority items relate to this
+2-- Never schedule anything on Fridays
+</global_context>
 
-The original implementation included `store_memory` and `recall_memory` tools, a semantic search layer for all persistent knowledge. During testing, this revealed a failure mode: foundational preferences weren't reliably surfaced at the right moment. The agent stored "prefers deep work in mornings" but semantic search didn't consistently retrieve it when planning a user's day.
+{conversation begins}
+```
 
-The root insight: **some knowledge should be constitutive of reasoning, not dependent on retrieval**. This led to the Global Context pattern described above.
-
-The abstract `Store` protocol made this evolution painless: swapping from semantic-search memory to Global Context required changing tool implementations without touching agent code. This flexibility is itself a benefit of ANA's layered design.
-
-For detailed design rationale including alternatives considered, see the companion [Global Context Design](global-context.md) document.
+This structure makes accumulated knowledge constitutive of every interaction. For detailed design rationale, see the companion [Global Context Design](global-context.md) document.
 
 ## 9. Future Directions
 
@@ -331,8 +335,6 @@ The companion implementation explores one position on the spectrum: high agent a
 Each position trades off differently between reliability and adaptability. The spectrum framework (Section 5) provides vocabulary for these design decisions; implementations across the spectrum would validate or refine the framework.
 
 ## 10. Conclusion
-
-{I just discovered a todo app in the wild that ehibits several ANA properties. Should I mention it here? https://jottie.io/learn-more , As I type in a todo, it adds properties like "due date" and "project" based on my text, without me explicitly filling out fields.}
 
 Agent Native Architecture represents a meaningful evolution in how LLM-powered applications can be designed. By positioning the agent as the reasoning core and allowing structure to emerge at runtime, ANA enables capabilities difficult or impossible to achieve in schema-first architectures: cross-domain reasoning, emergent features, immediate personalization, and proactive behavior.
 
