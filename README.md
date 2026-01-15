@@ -36,14 +36,15 @@ You: Add a task to review the quarterly report
 Assistant: Created a task: "review the quarterly report"
 
 You: I prefer to do deep work in the morning
-Assistant: I'll remember that you prefer deep work in the morning.
+Assistant: I've added that to your Global Context — I'll factor in your
+          preference for morning deep work when making suggestions.
 
 You: What should I focus on today?
 Assistant: Based on your preference for morning deep work,
           I'd suggest tackling the quarterly report review first...
 ```
 
-The assistant has 6 primitive tools and builds everything else through reasoning:
+The assistant has 7 primitive tools and builds everything else through reasoning:
 
 | Tool | Purpose |
 |------|---------|
@@ -51,8 +52,9 @@ The assistant has 6 primitive tools and builds everything else through reasoning
 | `update_item` | Modify content or properties |
 | `delete_item` | Remove |
 | `query_items` | Find by meaning or properties |
-| `store_memory` | Remember preferences and patterns |
-| `recall_memory` | Retrieve relevant memories |
+| `append_context` | Add knowledge to Global Context |
+| `replace_context` | Update a line in Global Context |
+| `delete_context` | Remove a line from Global Context |
 
 ## Architecture
 
@@ -67,7 +69,7 @@ The assistant has 6 primitive tools and builds everything else through reasoning
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐
-│           6 Primitive Tools             │
+│           7 Primitive Tools             │
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐
@@ -76,7 +78,7 @@ The assistant has 6 primitive tools and builds everything else through reasoning
                   │
 ┌─────────────────▼───────────────────────┐
 │             ChromaDB                    │
-│     (items + memory, semantic search)   │
+│  (items + global_context collections)   │
 └─────────────────────────────────────────┘
 ```
 
@@ -94,13 +96,34 @@ We're testing whether a vector database can serve as the *single* persistence la
 - Every item is semantically searchable by default
 - "Find tasks similar to this" just works
 
+**Property Embedding for Semantic Search:**
+
+A key insight: ChromaDB's semantic search only operates on document content, not metadata. Dates like `due_date: "2026-01-13"` stored in metadata are invisible to queries like "what's due on 2026-01-13?"
+
+Our solution: automatically embed properties into the document content before storing, with dates converted to human-readable format. The agent never sees this—properties are stripped on retrieval.
+
+```
+# What gets stored (for semantic search)
+Review quarterly report
+---ANA_PROPS---
+type: task
+status: active
+due date: Tuesday January 13 2026
+
+# What the agent sees (clean API)
+content: "Review quarterly report"
+properties: {type: task, status: active, due_date: 2026-01-13}
+```
+
+Now "what's due Tuesday?" has real semantic similarity to find.
+
 **Tradeoffs we're accepting:**
 - Flat metadata (no nested objects)
 - Less battle-tested for CRUD
 - Embedding cost for every item
 
 **What we hope to gain:**
-- Semantic search on items for free
+- Semantic search on items *and their properties* for free
 - Simpler architecture
 - Natural language queries everywhere
 
@@ -112,18 +135,21 @@ We're testing whether a vector database can serve as the *single* persistence la
 agent_native_app/
 ├── config.py         # Configuration from .env
 ├── logging_config.py # Central logging setup
-├── store.py          # Store protocol + ChromaStore
-├── tools.py          # 6 primitives + OpenAI-compatible schemas
+├── store.py          # Store protocol + ChromaStore (with property embedding)
+├── tools.py          # 7 primitives + OpenAI-compatible schemas
 ├── agent.py          # OpenRouter agent with tool calling
 ├── cli.py            # Interactive REPL
 └── prompts/
     └── system.md     # "How to think" prompt
 
 scripts/
-└── db_describe.py    # Inspect ChromaDB collections
+├── db_describe.py           # Inspect ChromaDB collections
+└── migrate_embed_props.py   # Migration script for property embedding
+
+tests/
+└── test_store.py     # Store module tests (33 tests)
 
 docs/
-├── article.md                      # Canonical ANA definition
 ├── editor-notes.md                 # Editorial rationale
 ├── implementation-plan.md          # Technical design
 ├── blog-post-the-app-is-dead.md    # Philosophy essay
@@ -145,7 +171,7 @@ Configuration is managed via `.env` file (copy from `.env.example`):
 
 **Data**: Stored in `.data/` directory (ChromaDB persistent storage) with two collections:
 - `items` — Tasks, notes, reminders, ideas
-- `memory` — User preferences and patterns
+- `global_context` — Always-present knowledge that shapes agent reasoning
 
 **Inspect the database**:
 ```bash
@@ -159,38 +185,31 @@ Database: .data
 Collections: 2
 ============================================================
 
-📁 Collection: memory
+📁 Collection: global_context
 ----------------------------------------
-  Browse: chroma browse memory --path /Users/sam/Projects/agent-native-app/.data
   Config: {'hnsw:space': 'cosine'}
   Items: 1
   Metadata fields:
     - created_at: str
-    - key: str
+    - item_type: str
     - updated_at: str
-    - value_type: str
-  key values: user_organization_preferences
-  value_type values: str
+  item_type values: global_context
 
 📁 Collection: items
 ----------------------------------------
-  Browse: chroma browse items --path /Users/sam/Projects/agent-native-app/.data
   Config: {'hnsw:space': 'cosine'}
   Items: 6
   Metadata fields:
     - context: str
     - created_at: str
     - due_date: str
-    - parent_task: str
     - priority: int
-    - priority_display: str
     - project: str
     - status: str
     - type: str
     - updated_at: str
   type values: task
   status values: active, in-progress
-  priority values: 2
 
 ============================================================
 Chroma CLI: https://docs.trychroma.com/docs/cli/install
@@ -202,14 +221,14 @@ The system prompt teaches the assistant *how to think*, not *what to do*:
 
 - Items are flexible containers, not rigid task records
 - Properties emerge from context (type, status, priority, project...)
-- Memory learns user patterns over time
+- Global Context captures user patterns and preferences (always present, not retrieved)
 - Explain reasoning, but don't be verbose
 - Ask clarifying questions rather than guess
 - Be an advisor, not an autocrat
 
 ## Related
 
-- [Agent Native Architecture](docs/article.md) — Canonical definition of ANA
+- [Global Context Design](docs/global-context.md) — Always-present knowledge layer
 - [The App is Dead, Long Live the Assistant](docs/blog-post-the-app-is-dead.md) — Philosophy essay
 - [Implementation Plan](docs/implementation-plan.md) — Technical design and practical considerations
 - [Architecture Diagrams](docs/diagrams.md) — Visual overview of ChromaDB and tool flow
@@ -241,7 +260,7 @@ TOOL_SCHEMAS = [
             }
         }
     },
-    # ... 6 more tools
+    # ... more tools (7 total)
 ]
 ```
 

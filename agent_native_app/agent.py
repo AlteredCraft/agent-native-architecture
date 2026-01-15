@@ -13,19 +13,41 @@ from typing import Any
 from openai import OpenAI
 
 from .config import Config
-from .tools import TOOLS, TOOL_SCHEMAS
+from .tools import (
+    TOOLS, TOOL_SCHEMAS,
+    _gc_store, GC_ITEM_ID, _compact_gc, _format_gc_for_display
+)
 
 logger = logging.getLogger(__name__)
 
 
 def load_system_prompt() -> str:
-    """Load system prompt from file and inject current date/time."""
+    """Load system prompt from file and inject date/time and Global Context."""
     prompt_path = Path(__file__).parent / "prompts" / "system.md"
-    if prompt_path.exists():
-        prompt = prompt_path.read_text()
-        today = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
-        return prompt.replace("{{today}}", today)
-    return "You are a helpful AI assistant for managing tasks and notes."
+    if not prompt_path.exists():
+        return "You are a helpful AI assistant for managing tasks and notes."
+
+    prompt = prompt_path.read_text()
+
+    # Inject date/time
+    today = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
+    prompt = prompt.replace("{{today}}", today)
+
+    # Load and compact Global Context (removes empty lines from previous session)
+    item = _gc_store.get(GC_ITEM_ID)
+    if item:
+        compacted = _compact_gc(item.content)
+        if compacted != item.content:
+            _gc_store.upsert(GC_ITEM_ID, compacted, {"item_type": "global_context"})
+        lines = compacted.split("\n") if compacted else []
+    else:
+        lines = []
+
+    # Format and inject Global Context
+    gc_display = _format_gc_for_display(lines)
+    prompt = prompt.replace("{{global_context}}", gc_display)
+
+    return prompt
 
 
 class Agent:

@@ -6,8 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an **Agent Native Architecture (ANA)** experiment: a personal assistant where the LLM is the reasoning core, not an add-on. The key inversion is that structured data is an *output* of the agent's understanding, not an *input* required from users or predetermined by developers.
 
-See [docs/article.md](docs/article.md) for the canonical ANA definition.
-
 ## Commands
 
 ```bash
@@ -26,13 +24,13 @@ CLI (REPL)
     ↓
 Agent (OpenRouter, any model)
     ↓
-6 Primitive Tools (medium-hint level)
+7 Primitive Tools (medium-hint level)
     ↓
 Store Protocol (abstract interface)
     ↓
 ChromaDB (single persistence layer)
     └── items collection (tasks, notes, ideas)
-    └── memory collection (user preferences, patterns)
+    └── global_context collection (always-present knowledge)
 ```
 
 ### Key Design Decisions
@@ -41,7 +39,7 @@ ChromaDB (single persistence layer)
 
 **Medium-Hint Schema Level**: Tools are domain-agnostic (`create_item`, not `create_task`). The system prompt guides the agent on *how to think* about structure (types, statuses, priorities), but the agent decides what properties matter for each item at runtime.
 
-**6 Primitive Tools**: `create_item`, `update_item`, `delete_item`, `query_items`, `store_memory`, `recall_memory`. Higher-level concepts emerge from agent reasoning, not from tool design.
+**7 Primitive Tools**: `create_item`, `update_item`, `delete_item`, `query_items` for items; `append_context`, `replace_context`, `delete_context` for Global Context. Higher-level concepts emerge from agent reasoning, not from tool design.
 
 ## Code Structure
 
@@ -50,7 +48,7 @@ ChromaDB (single persistence layer)
 | `agent_native_app/agent.py` | LLM agent with agentic loop (calls LLM, executes tools, loops until text response) |
 | `agent_native_app/store.py` | `Store` protocol + `ChromaStore` implementation |
 | `agent_native_app/tools.py` | Tool implementations + OpenAI-compatible schemas in `TOOL_SCHEMAS` |
-| `agent_native_app/prompts/system.md` | System prompt teaching the agent *how to think* (uses `{{today}}` placeholder) |
+| `agent_native_app/prompts/system.md` | System prompt teaching the agent *how to think* (uses `{{today}}` and `{{global_context}}` placeholders) |
 | `agent_native_app/cli.py` | Interactive REPL |
 | `agent_native_app/config.py` | Configuration from `.env` |
 

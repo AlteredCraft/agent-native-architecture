@@ -1,6 +1,6 @@
 # Agent-Native Todo: Implementation Plan
 
-> See [Agent Native Architecture](article.md) for the canonical definition of ANA.
+
 
 ## Premise
 
@@ -26,7 +26,7 @@ these ideas concretely.
   theorizing.
 
 ### Schema Hint Level
-This implementation sits at **medium-hint** on the schema hint spectrum (see article.md §4):
+This implementation sits at **medium-hint** on the schema hint spectrum:
 
 - **Low-hint tools**: Generic CRUD (`create_item`, `update_item`, etc.) without domain-specific constraints. The agent decides what properties matter.
 - **Medium-hint system prompt**: Domain guidance (what tasks/priorities/projects mean) without rigid rules. The prompt teaches conventions, not schemas.
