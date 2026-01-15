@@ -148,12 +148,6 @@ scripts/
 
 tests/
 └── test_store.py     # Store module tests (33 tests)
-
-docs/
-├── editor-notes.md                 # Editorial rationale
-├── implementation-plan.md          # Technical design
-├── blog-post-the-app-is-dead.md    # Philosophy essay
-└── diagrams.md                     # Architecture diagrams
 ```
 
 ## Configuration
@@ -229,8 +223,6 @@ The system prompt teaches the assistant *how to think*, not *what to do*:
 ## Related
 
 - [Global Context Design](docs/global-context.md) — Always-present knowledge layer
-- [The App is Dead, Long Live the Assistant](docs/blog-post-the-app-is-dead.md) — Philosophy essay
-- [Implementation Plan](docs/implementation-plan.md) — Technical design and practical considerations
 - [Architecture Diagrams](docs/diagrams.md) — Visual overview of ChromaDB and tool flow
 
 ---
