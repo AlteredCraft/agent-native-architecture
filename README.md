@@ -1,6 +1,16 @@
-# Agent Native Architectures
+<p align="center">
+  <img src="docs/logo.v1.small.png" alt="Altered Craft" width="150">
+</p>
+
+# Agent Native Architecture
+
+**Calibrating Autonomy and Predictability in Agent Systems**
 
 An experiment in building software where the LLM is the core, not an add-on.
+
+> 📄 **[Read the full paper →](https://alteredcraft.com/p/agent-native-architecture)**
+>
+> This repo is the companion implementation. The paper covers the conceptual framework: the fundamental inversion, the determinism model, the design spectrum, and when ANA fits (or doesn't).
 
 ## The Idea
 
@@ -8,7 +18,7 @@ Classical apps are **schema-first**: you define data models, build features, the
 
 This project inverts that. It's **semantic-first**: the LLM's understanding of language is the core. Structured data becomes an *output* of understanding, not an *input* required from users.
 
-We're using a todo/personal assistant as a familiar example to explore what this means in practice.
+I'm using a todo/personal assistant as a familiar example to explore what this means in practice.
 
 ## Quick Start
 
@@ -84,14 +94,14 @@ The assistant has 7 primitive tools and builds everything else through reasoning
 
 ## The Experiment: ChromaDB Only
 
-We're testing whether a vector database can serve as the *single* persistence layer.
+I'm testing whether a vector database can serve as the *single* persistence layer.
 
 **Traditional approach:**
 - SQLite for structured data
 - Vector DB for embeddings
 - Two systems to sync
 
-**Our experiment:**
+**This experiment:**
 - ChromaDB stores everything
 - Every item is semantically searchable by default
 - "Find tasks similar to this" just works
@@ -100,7 +110,7 @@ We're testing whether a vector database can serve as the *single* persistence la
 
 A key insight: ChromaDB's semantic search only operates on document content, not metadata. Dates like `due_date: "2026-01-13"` stored in metadata are invisible to queries like "what's due on 2026-01-13?"
 
-Our solution: automatically embed properties into the document content before storing, with dates converted to human-readable format. The agent never sees this—properties are stripped on retrieval.
+The solution: automatically embed properties into the document content before storing, with dates converted to human-readable format. The agent never sees this—properties are stripped on retrieval.
 
 ```
 # What gets stored (for semantic search)
@@ -117,17 +127,17 @@ properties: {type: task, status: active, due_date: 2026-01-13}
 
 Now "what's due Tuesday?" has real semantic similarity to find.
 
-**Tradeoffs we're accepting:**
+**Tradeoffs I'm accepting:**
 - Flat metadata (no nested objects)
 - Less battle-tested for CRUD
 - Embedding cost for every item
 
-**What we hope to gain:**
+**What I hope to gain:**
 - Semantic search on items *and their properties* for free
 - Simpler architecture
 - Natural language queries everywhere
 
-**The hedge:** We built behind an abstract `Store` protocol. If ChromaDB doesn't work, we can swap to SQLite without touching tools or agent code.
+**The hedge:** I built behind an abstract `Store` protocol. If ChromaDB doesn't work, we can swap to SQLite without touching tools or agent code.
 
 ## Project Structure
 

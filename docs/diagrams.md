@@ -1,6 +1,44 @@
 # Architecture Diagrams
 
-## ChromaDB Utilization & Agent Tool Flow
+## High-Level Architecture
+
+A simplified view of the Agent Native Architecture.
+
+```mermaid
+flowchart TB
+    CLI["CLI"]
+
+    subgraph Agent["LLM Agent"]
+        LLM["Any LLM<br/>(via OpenRouter)"]
+        Prompt["System Prompt<br/>+ Global Context"]
+    end
+
+    subgraph Tools["Primitive Tools"]
+        ItemCRUD["Item CRUD"]
+        ContextOps["Context Ops"]
+    end
+
+    Store["Store Protocol<br/>(Abstraction Layer)"]
+
+    subgraph ChromaDB["ChromaDB"]
+        Items["Items<br/>(tasks, notes, ideas)"]
+        Context["Global Context<br/>(persistent knowledge)"]
+    end
+
+    CLI -->|"natural language"| LLM
+    Prompt -.-> LLM
+    LLM -->|"tool calls"| Tools
+    ItemCRUD --> Store
+    ContextOps --> Store
+    Store --> Items
+    Store --> Context
+```
+
+**Key idea**: The LLM decides what structure to apply at runtime. Schema emerges from reasoning, not from predefined models.
+
+---
+
+## Detailed: ChromaDB Utilization & Agent Tool Flow
 
 This diagram shows how the LLM agent leverages ChromaDB through the 7 primitive tools.
 
